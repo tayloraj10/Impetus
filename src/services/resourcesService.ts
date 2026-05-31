@@ -1,12 +1,12 @@
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc,
+  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
   doc, serverTimestamp, increment,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import type { Resource, CreateResourceInput } from '../types'
-import { createFeedItem } from './feedService'
-import { incrementTopicCount } from './topicsService'
+import { createFeedItem, deleteFeedItemByRefId } from './feedService'
+import { incrementTopicCount, decrementTopicCount } from './topicsService'
 
 function toResource(id: string, data: any): Resource {
   return {
@@ -15,6 +15,7 @@ function toResource(id: string, data: any): Resource {
     notHelpful: data.notHelpful ?? 0,
     flags: data.flags ?? 0,
     createdAt: data.createdAt?.toDate() ?? new Date(),
+    removedAt: data.removedAt?.toDate(),
   }
 }
 
@@ -107,4 +108,42 @@ export function subscribePendingResources(callback: (resources: Resource[]) => v
 
 export async function setResourceModerationStatus(id: string, status: import('../types').ModerationStatus) {
   await updateDoc(doc(db, 'resources', id), { moderationStatus: status })
+}
+
+export async function softDeleteResource(id: string, removedBy: string, removedByDisplayName: string): Promise<void> {
+  await Promise.all([
+    updateDoc(doc(db, 'resources', id), {
+      moderationStatus: 'removed',
+      removedBy,
+      removedByDisplayName,
+      removedAt: serverTimestamp(),
+    }),
+    deleteFeedItemByRefId(id),
+  ])
+}
+
+export function subscribeRemovedResources(callback: (resources: Resource[]) => void): Unsubscribe {
+  const q = query(collection(db, 'resources'), where('moderationStatus', '==', 'removed'))
+  return onSnapshot(q, (snap) => {
+    const resources = snap.docs.map(d => toResource(d.id, d.data()))
+    resources.sort((a, b) => (b.removedAt?.getTime() ?? 0) - (a.removedAt?.getTime() ?? 0))
+    callback(resources)
+  }, (err) => { console.error('subscribeRemovedResources error:', err); callback([]) })
+}
+
+export async function restoreResource(id: string): Promise<void> {
+  await updateDoc(doc(db, 'resources', id), {
+    moderationStatus: 'live',
+    removedBy: null,
+    removedByDisplayName: null,
+    removedAt: null,
+  })
+}
+
+export async function deleteResource(id: string, topicId: string): Promise<void> {
+  await Promise.all([
+    deleteDoc(doc(db, 'resources', id)),
+    deleteFeedItemByRefId(id),
+    decrementTopicCount(topicId, 'resourceCount'),
+  ])
 }

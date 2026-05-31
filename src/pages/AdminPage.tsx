@@ -2,15 +2,27 @@ import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useAllTopics } from '../hooks/useTopics'
 import { createTopic, updateTopic } from '../services/topicsService'
-import { subscribePendingGroups, setGroupModerationStatus } from '../services/groupsService'
-import { subscribePendingResources, setResourceModerationStatus } from '../services/resourcesService'
-import { subscribePendingEvents, setEventModerationStatus } from '../services/eventsService'
+import {
+  subscribePendingGroups, setGroupModerationStatus,
+  subscribeRemovedGroups, restoreGroup, deleteGroup,
+} from '../services/groupsService'
+import {
+  subscribePendingResources, setResourceModerationStatus,
+  subscribeRemovedResources, restoreResource, deleteResource,
+} from '../services/resourcesService'
+import {
+  subscribePendingEvents, setEventModerationStatus,
+  subscribeRemovedEvents, restoreEvent, deleteEvent,
+} from '../services/eventsService'
+import {
+  subscribeRemovedChallenges, restoreChallenge, deleteChallenge,
+} from '../services/challengesService'
 import { uploadImage, topicImagePath } from '../services/storageService'
 import { seedAllTopics } from '../services/seedService'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { formatTimeAgo, formatDate } from '../utils/time'
-import type { Topic, ComponentType, Group, Resource, ImpetusEvent } from '../types'
+import type { Topic, ComponentType, Group, Resource, ImpetusEvent, Challenge } from '../types'
 
 const ALL_COMPONENTS: { key: ComponentType; label: string }[] = [
   { key: 'groups', label: 'Groups' },
@@ -51,6 +63,7 @@ export function AdminPage() {
       {import.meta.env.DEV && isAdmin && <SeedPanel />}
 
       <ModerationSection topicMap={topicMap} />
+      <RemovedSection topicMap={topicMap} />
 
       {isAdmin && (
         <section>
@@ -861,5 +874,207 @@ function EventDetailModal({ event: e, topicName, open, onClose }: { event: Impet
         <ReviewActions acting={acting} onApprove={() => act('approve')} onReject={() => act('reject')} />
       </div>
     </Modal>
+  )
+}
+
+// ── Removed Content ───────────────────────────────────────────────────────────
+
+type RemovedTab = 'groups' | 'resources' | 'events' | 'challenges'
+
+function RemovedSection({ topicMap }: { topicMap: Record<string, string> }) {
+  const [tab, setTab] = useState<RemovedTab>('groups')
+  const [groups, setGroups] = useState<Group[]>([])
+  const [resources, setResources] = useState<Resource[]>([])
+  const [events, setEvents] = useState<ImpetusEvent[]>([])
+  const [challenges, setChallenges] = useState<Challenge[]>([])
+
+  useEffect(() => subscribeRemovedGroups(setGroups), [])
+  useEffect(() => subscribeRemovedResources(setResources), [])
+  useEffect(() => subscribeRemovedEvents(setEvents), [])
+  useEffect(() => subscribeRemovedChallenges(setChallenges), [])
+
+  const counts: Record<RemovedTab, number> = {
+    groups: groups.length,
+    resources: resources.length,
+    events: events.length,
+    challenges: challenges.length,
+  }
+  const total = groups.length + resources.length + events.length + challenges.length
+
+  const tabs: { key: RemovedTab; label: string }[] = [
+    { key: 'groups', label: 'Groups' },
+    { key: 'resources', label: 'Resources' },
+    { key: 'events', label: 'Events' },
+    { key: 'challenges', label: 'Challenges' },
+  ]
+
+  return (
+    <section className="mb-8">
+      <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-4">
+        Removed Content{total > 0 && <span className="ml-2 text-zinc-500">({total})</span>}
+      </h2>
+
+      {total === 0 ? (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-8 text-center">
+          <p className="text-zinc-500 text-sm">No removed content</p>
+        </div>
+      ) : (
+        <>
+          <div className="flex gap-0.5 border-b border-zinc-800 mb-4">
+            {tabs.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setTab(key)}
+                className={`px-4 py-2 text-sm font-medium transition-all cursor-pointer -mb-px border-b-2 rounded-t-md flex items-center gap-1.5 ${
+                  tab === key
+                    ? 'text-zinc-300 border-zinc-400 bg-zinc-800/50'
+                    : 'text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-zinc-800/50'
+                }`}
+              >
+                {label}
+                {counts[key] > 0 && (
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                    tab === key ? 'bg-zinc-700 text-zinc-300' : 'bg-zinc-800 text-zinc-500'
+                  }`}>{counts[key]}</span>
+                )}
+              </button>
+            ))}
+          </div>
+
+          <div className="space-y-2">
+            {tab === 'groups' && (
+              groups.length === 0
+                ? <p className="text-zinc-600 text-sm py-4 text-center">None</p>
+                : groups.map(g => (
+                  <RemovedCard
+                    key={g.id}
+                    type="Group"
+                    title={g.name}
+                    topicName={topicMap[g.topicId]}
+                    removedByDisplayName={g.removedByDisplayName}
+                    removedAt={g.removedAt}
+                    onRestore={() => restoreGroup(g.id)}
+                    onDelete={() => deleteGroup(g.id, g.topicId)}
+                  />
+                ))
+            )}
+            {tab === 'resources' && (
+              resources.length === 0
+                ? <p className="text-zinc-600 text-sm py-4 text-center">None</p>
+                : resources.map(r => (
+                  <RemovedCard
+                    key={r.id}
+                    type="Resource"
+                    title={r.title}
+                    topicName={topicMap[r.topicId]}
+                    removedByDisplayName={r.removedByDisplayName}
+                    removedAt={r.removedAt}
+                    onRestore={() => restoreResource(r.id)}
+                    onDelete={() => deleteResource(r.id, r.topicId)}
+                  />
+                ))
+            )}
+            {tab === 'events' && (
+              events.length === 0
+                ? <p className="text-zinc-600 text-sm py-4 text-center">None</p>
+                : events.map(e => (
+                  <RemovedCard
+                    key={e.id}
+                    type="Event"
+                    title={e.title}
+                    topicName={topicMap[e.topicId]}
+                    removedByDisplayName={e.removedByDisplayName}
+                    removedAt={e.removedAt}
+                    onRestore={() => restoreEvent(e.id)}
+                    onDelete={() => deleteEvent(e.id, e.topicId)}
+                  />
+                ))
+            )}
+            {tab === 'challenges' && (
+              challenges.length === 0
+                ? <p className="text-zinc-600 text-sm py-4 text-center">None</p>
+                : challenges.map(c => (
+                  <RemovedCard
+                    key={c.id}
+                    type="Challenge"
+                    title={c.title}
+                    topicName={topicMap[c.topicId]}
+                    removedByDisplayName={c.removedByDisplayName}
+                    removedAt={c.removedAt}
+                    onRestore={() => restoreChallenge(c.id)}
+                    onDelete={() => deleteChallenge(c.id, c.topicId)}
+                  />
+                ))
+            )}
+          </div>
+        </>
+      )}
+    </section>
+  )
+}
+
+function RemovedCard({
+  type, title, topicName, removedByDisplayName, removedAt, onRestore, onDelete,
+}: {
+  type: string
+  title: string
+  topicName?: string
+  removedByDisplayName?: string
+  removedAt?: Date
+  onRestore: () => Promise<void>
+  onDelete: () => Promise<void>
+}) {
+  const [restoring, setRestoring] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  async function handleRestore() {
+    setRestoring(true)
+    try { await onRestore() } finally { setRestoring(false) }
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) { setConfirmDelete(true); return }
+    setDeleting(true)
+    try { await onDelete() } finally { setDeleting(false); setConfirmDelete(false) }
+  }
+
+  const busy = restoring || deleting
+
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 flex items-center gap-3">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+          <span className="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-medium">{type}</span>
+          {topicName && <span className="text-xs text-zinc-500">{topicName}</span>}
+        </div>
+        <p className="text-zinc-100 text-sm font-medium truncate">{title}</p>
+        <p className="text-zinc-500 text-xs mt-0.5">
+          Removed by <span className="text-zinc-400">{removedByDisplayName ?? 'Admin'}</span>
+          {removedAt && <span> · {formatTimeAgo(removedAt)}</span>}
+        </p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={handleRestore}
+          disabled={busy}
+          className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:border-emerald-700 hover:text-emerald-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {restoring ? '…' : 'Restore'}
+        </button>
+        <button
+          onClick={handleDelete}
+          disabled={busy}
+          onBlur={() => setConfirmDelete(false)}
+          className={`text-xs px-3 py-1.5 rounded-lg border transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+            confirmDelete
+              ? 'border-red-700 text-red-400 bg-red-500/10'
+              : 'border-zinc-700 text-zinc-500 hover:border-red-700 hover:text-red-400'
+          }`}
+        >
+          {deleting ? '…' : confirmDelete ? 'Confirm?' : 'Delete'}
+        </button>
+      </div>
+    </div>
   )
 }

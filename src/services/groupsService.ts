@@ -1,12 +1,12 @@
 import {
-  collection, query, where, onSnapshot, addDoc, updateDoc,
+  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
   doc, serverTimestamp, increment,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import type { Group, CreateGroupInput } from '../types'
-import { createFeedItem } from './feedService'
-import { incrementTopicCount } from './topicsService'
+import { createFeedItem, deleteFeedItemByRefId } from './feedService'
+import { incrementTopicCount, decrementTopicCount } from './topicsService'
 
 function toGroup(id: string, data: any): Group {
   return {
@@ -16,6 +16,7 @@ function toGroup(id: string, data: any): Group {
     flags: data.flags ?? 0,
     createdAt: data.createdAt?.toDate() ?? new Date(),
     updatedAt: data.updatedAt?.toDate() ?? new Date(),
+    removedAt: data.removedAt?.toDate(),
   }
 }
 
@@ -114,4 +115,44 @@ export function subscribePendingGroups(callback: (groups: Group[]) => void): Uns
 
 export async function setGroupModerationStatus(id: string, status: import('../types').ModerationStatus) {
   await updateDoc(doc(db, 'groups', id), { moderationStatus: status, updatedAt: serverTimestamp() })
+}
+
+export async function softDeleteGroup(id: string, removedBy: string, removedByDisplayName: string): Promise<void> {
+  await Promise.all([
+    updateDoc(doc(db, 'groups', id), {
+      moderationStatus: 'removed',
+      removedBy,
+      removedByDisplayName,
+      removedAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    }),
+    deleteFeedItemByRefId(id),
+  ])
+}
+
+export function subscribeRemovedGroups(callback: (groups: Group[]) => void): Unsubscribe {
+  const q = query(collection(db, 'groups'), where('moderationStatus', '==', 'removed'))
+  return onSnapshot(q, (snap) => {
+    const groups = snap.docs.map(d => toGroup(d.id, d.data()))
+    groups.sort((a, b) => (b.removedAt?.getTime() ?? 0) - (a.removedAt?.getTime() ?? 0))
+    callback(groups)
+  }, (err) => { console.error('subscribeRemovedGroups error:', err); callback([]) })
+}
+
+export async function restoreGroup(id: string): Promise<void> {
+  await updateDoc(doc(db, 'groups', id), {
+    moderationStatus: 'live',
+    removedBy: null,
+    removedByDisplayName: null,
+    removedAt: null,
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export async function deleteGroup(id: string, topicId: string): Promise<void> {
+  await Promise.all([
+    deleteDoc(doc(db, 'groups', id)),
+    deleteFeedItemByRefId(id),
+    decrementTopicCount(topicId, 'groupCount'),
+  ])
 }

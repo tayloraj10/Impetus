@@ -1,5 +1,5 @@
 import {
-  collection, query, orderBy, limit, onSnapshot, addDoc, updateDoc, doc,
+  collection, query, orderBy, limit, where, onSnapshot, addDoc, updateDoc, deleteDoc, doc, getDocs,
   serverTimestamp, increment,
   type Unsubscribe,
 } from 'firebase/firestore'
@@ -64,4 +64,10 @@ export async function createFeedItem(data: Omit<FeedItem, 'id' | 'createdAt'>) {
     ...data,
     createdAt: serverTimestamp(),
   })
+}
+
+export async function deleteFeedItemByRefId(refId: string): Promise<void> {
+  const q = query(collection(db, 'feed'), where('refId', '==', refId))
+  const snap = await getDocs(q)
+  await Promise.all(snap.docs.map(d => deleteDoc(d.ref)))
 }

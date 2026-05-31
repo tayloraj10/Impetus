@@ -3,13 +3,14 @@ import type { Challenge, ChallengeSubmission, Topic } from '../../types'
 import {
   subscribeChallenges, subscribeChallengeSubmissions,
   createChallenge, submitChallengeAction,
-  upvoteChallenge, unupvoteChallenge, flagChallenge, unflagChallenge,
+  upvoteChallenge, unupvoteChallenge, flagChallenge, unflagChallenge, softDeleteChallenge, deleteChallenge,
 } from '../../services/challengesService'
 import { useAuth } from '../../hooks/useAuth'
 import { useLiked, useFlag } from '../../hooks/useLiked'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { FlagButton } from '../ui/FlagButton'
+import { ModerateButtons } from '../ui/ModerateButtons'
 import { Tooltip } from '../ui/Tooltip'
 import { Modal } from '../ui/Modal'
 import { Spinner } from '../ui/Spinner'
@@ -46,11 +47,11 @@ export function ChallengesComponent({ topic }: { topic: Topic }) {
         <EmptyState />
       ) : (
         <div className="space-y-4">
-          {active.map(c => <ChallengeCard key={c.id} challenge={c} />)}
+          {active.map(c => <ChallengeCard key={c.id} challenge={c} role={role} />)}
           {ended.length > 0 && (
             <>
               <p className="text-zinc-600 text-xs pt-2 pb-1 uppercase tracking-wider">Ended</p>
-              {ended.map(c => <ChallengeCard key={c.id} challenge={c} ended />)}
+              {ended.map(c => <ChallengeCard key={c.id} challenge={c} ended role={role} />)}
             </>
           )}
         </div>
@@ -78,12 +79,14 @@ function ChevronDown({ open }: { open: boolean }) {
   )
 }
 
-function ChallengeCard({ challenge, ended = false }: { challenge: Challenge; ended?: boolean }) {
+function ChallengeCard({ challenge, ended = false, role }: { challenge: Challenge; ended?: boolean; role: string | null }) {
   const [actionOpen, setActionOpen] = useState(false)
   const [submissionsOpen, setSubmissionsOpen] = useState(false)
   const { user } = useAuth()
   const { liked, toggle, canLike } = useLiked(challenge.id, 'upvoted')
   const { flagged, flag, unflag, canFlag } = useFlag(challenge.id)
+  const canModerate = role === 'admin' || role === 'moderator'
+  const isAdmin = role === 'admin'
 
   return (
     <div className={`border rounded-xl p-5 ${ended ? 'border-zinc-800/50 opacity-60' : 'border-zinc-700 bg-zinc-900'}`}>
@@ -92,6 +95,14 @@ function ChallengeCard({ challenge, ended = false }: { challenge: Challenge; end
           <div className="flex flex-wrap items-center gap-2 mb-2">
             <Badge variant={ended ? 'default' : 'purple'}>{ended ? 'Ended' : 'Active'}</Badge>
             {challenge.type === 'group_competition' && <Badge variant="amber">Competition</Badge>}
+            {canModerate && (
+              <div className="ml-auto">
+                <ModerateButtons
+                  onSoftDelete={(uid, name) => softDeleteChallenge(challenge.id, uid, name)}
+                  onHardDelete={isAdmin ? () => deleteChallenge(challenge.id, challenge.topicId) : undefined}
+                />
+              </div>
+            )}
           </div>
           <h3 className="text-zinc-100 font-semibold">{challenge.title}</h3>
           <p className="text-zinc-400 text-sm mt-1 leading-relaxed">{challenge.description}</p>

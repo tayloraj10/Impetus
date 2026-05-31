@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react'
 import type { Group, CreateGroupInput, Topic } from '../../types'
-import { subscribeGroups, createGroup, likeGroup, unlikeGroup, flagGroup, unflagGroup } from '../../services/groupsService'
+import { subscribeGroups, createGroup, likeGroup, unlikeGroup, flagGroup, unflagGroup, softDeleteGroup, deleteGroup } from '../../services/groupsService'
 import { uploadImage, groupLogoPath } from '../../services/storageService'
 import { useAuth } from '../../hooks/useAuth'
 import { useLiked, useFlag } from '../../hooks/useLiked'
 import { Button } from '../ui/Button'
 import { FlagButton } from '../ui/FlagButton'
+import { ModerateButtons } from '../ui/ModerateButtons'
 import { Tooltip } from '../ui/Tooltip'
 import { Modal } from '../ui/Modal'
 import { Spinner } from '../ui/Spinner'
@@ -14,7 +15,7 @@ export function GroupsComponent({ topic }: { topic: Topic }) {
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
-  const { user } = useAuth()
+  const { user, role } = useAuth()
 
   useEffect(() => {
     const unsub = subscribeGroups(topic.id, (data) => {
@@ -39,7 +40,7 @@ export function GroupsComponent({ topic }: { topic: Topic }) {
         <EmptyState onAdd={() => setModalOpen(true)} />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {groups.map(g => <GroupCard key={g.id} group={g} />)}
+          {groups.map(g => <GroupCard key={g.id} group={g} role={role} />)}
         </div>
       )}
 
@@ -79,10 +80,12 @@ function ShieldCheck({ filled }: { filled: boolean }) {
   )
 }
 
-function GroupCard({ group }: { group: Group }) {
+function GroupCard({ group, role }: { group: Group; role: string | null }) {
   const hasLinks = Object.values(group.links ?? {}).some(Boolean)
   const { liked, toggle, canLike } = useLiked(group.id, 'verified')
   const { flagged, flag, unflag, canFlag } = useFlag(group.id)
+  const canModerate = role === 'admin' || role === 'moderator'
+  const isAdmin = role === 'admin'
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors">
@@ -101,6 +104,12 @@ function GroupCard({ group }: { group: Group }) {
                 <Tooltip text="This group is visible but awaiting moderator review">
                   <span className="text-xs text-amber-500/80 font-medium">Under Review</span>
                 </Tooltip>
+              )}
+              {canModerate && (
+                <ModerateButtons
+                  onSoftDelete={(uid, name) => softDeleteGroup(group.id, uid, name)}
+                  onHardDelete={isAdmin ? () => deleteGroup(group.id, group.topicId) : undefined}
+                />
               )}
               <Tooltip text={liked ? 'Remove confirmation' : canLike ? 'Confirm this group is active' : 'Sign in to confirm'}>
                 <button

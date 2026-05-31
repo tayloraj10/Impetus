@@ -1,6 +1,6 @@
 export type ComponentType = 'groups' | 'resources' | 'events' | 'challenges'
 
-export type ModerationStatus = 'live' | 'pending_review' | 'pending_approval' | 'rejected'
+export type ModerationStatus = 'live' | 'pending_review' | 'pending_approval' | 'rejected' | 'removed'
 
 export interface Topic {
   id: string
@@ -66,6 +66,9 @@ export interface Group {
   updatedAt: Date
   likes: number
   flags: number
+  removedBy?: string
+  removedByDisplayName?: string
+  removedAt?: Date
 }
 
 export interface Resource {
@@ -82,6 +85,9 @@ export interface Resource {
   likes: number
   notHelpful: number
   flags: number
+  removedBy?: string
+  removedByDisplayName?: string
+  removedAt?: Date
 }
 
 export interface ImpetusEvent {
@@ -101,6 +107,9 @@ export interface ImpetusEvent {
   interested: number
   going: number
   flags: number
+  removedBy?: string
+  removedByDisplayName?: string
+  removedAt?: Date
 }
 
 export interface Challenge {
@@ -111,12 +120,15 @@ export interface Challenge {
   actionPrompt: string
   deadline?: Date
   type: 'individual' | 'group_competition'
-  moderationStatus: 'active' | 'ended' | 'pending_approval' | 'rejected'
+  moderationStatus: 'active' | 'ended' | 'pending_approval' | 'rejected' | 'removed'
   createdBy: string
   createdAt: Date
   participantCount: number
   upvotes: number
   flags: number
+  removedBy?: string
+  removedByDisplayName?: string
+  removedAt?: Date
 }
 
 export interface ChallengeSubmission {

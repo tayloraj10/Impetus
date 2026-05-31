@@ -1,12 +1,12 @@
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc,
+  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
   doc, serverTimestamp, increment, Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import type { ImpetusEvent, CreateEventInput } from '../types'
-import { createFeedItem } from './feedService'
-import { incrementTopicCount } from './topicsService'
+import { createFeedItem, deleteFeedItemByRefId } from './feedService'
+import { incrementTopicCount, decrementTopicCount } from './topicsService'
 
 function toEvent(id: string, data: any): ImpetusEvent {
   return {
@@ -18,6 +18,7 @@ function toEvent(id: string, data: any): ImpetusEvent {
     going: data.going ?? 0,
     flags: data.flags ?? 0,
     createdAt: data.createdAt?.toDate() ?? new Date(),
+    removedAt: data.removedAt?.toDate(),
   }
 }
 
@@ -112,4 +113,42 @@ export function subscribePendingEvents(callback: (events: ImpetusEvent[]) => voi
 
 export async function setEventModerationStatus(id: string, status: import('../types').ModerationStatus) {
   await updateDoc(doc(db, 'events', id), { moderationStatus: status })
+}
+
+export async function softDeleteEvent(id: string, removedBy: string, removedByDisplayName: string): Promise<void> {
+  await Promise.all([
+    updateDoc(doc(db, 'events', id), {
+      moderationStatus: 'removed',
+      removedBy,
+      removedByDisplayName,
+      removedAt: serverTimestamp(),
+    }),
+    deleteFeedItemByRefId(id),
+  ])
+}
+
+export function subscribeRemovedEvents(callback: (events: ImpetusEvent[]) => void): Unsubscribe {
+  const q = query(collection(db, 'events'), where('moderationStatus', '==', 'removed'))
+  return onSnapshot(q, (snap) => {
+    const events = snap.docs.map(d => toEvent(d.id, d.data()))
+    events.sort((a, b) => (b.removedAt?.getTime() ?? 0) - (a.removedAt?.getTime() ?? 0))
+    callback(events)
+  }, (err) => { console.error('subscribeRemovedEvents error:', err); callback([]) })
+}
+
+export async function restoreEvent(id: string): Promise<void> {
+  await updateDoc(doc(db, 'events', id), {
+    moderationStatus: 'live',
+    removedBy: null,
+    removedByDisplayName: null,
+    removedAt: null,
+  })
+}
+
+export async function deleteEvent(id: string, topicId: string): Promise<void> {
+  await Promise.all([
+    deleteDoc(doc(db, 'events', id)),
+    deleteFeedItemByRefId(id),
+    decrementTopicCount(topicId, 'eventCount'),
+  ])
 }

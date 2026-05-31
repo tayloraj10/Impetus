@@ -77,6 +77,13 @@ export async function incrementTopicCount(topicId: string, field: 'groupCount' |
   })
 }
 
+export async function decrementTopicCount(topicId: string, field: 'groupCount' | 'resourceCount' | 'eventCount' | 'challengeCount') {
+  await updateDoc(doc(db, 'topics', topicId), {
+    [field]: increment(-1),
+    updatedAt: serverTimestamp(),
+  })
+}
+
 export function subscribeAllTopics(callback: (topics: Topic[]) => void): Unsubscribe {
   const q = query(
     collection(db, 'topics'),

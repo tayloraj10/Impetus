@@ -1,12 +1,12 @@
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc,
+  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
   doc, serverTimestamp, increment, limit,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import type { Challenge, ChallengeSubmission } from '../types'
-import { createFeedItem } from './feedService'
-import { incrementTopicCount } from './topicsService'
+import { createFeedItem, deleteFeedItemByRefId } from './feedService'
+import { incrementTopicCount, decrementTopicCount } from './topicsService'
 import { uploadImage, submissionImagePath } from './storageService'
 
 function toChallenge(id: string, data: any): Challenge {
@@ -17,6 +17,7 @@ function toChallenge(id: string, data: any): Challenge {
     upvotes: data.upvotes ?? 0,
     flags: data.flags ?? 0,
     createdAt: data.createdAt?.toDate() ?? new Date(),
+    removedAt: data.removedAt?.toDate(),
   }
 }
 
@@ -117,4 +118,42 @@ export async function flagChallenge(challengeId: string) {
 
 export async function unflagChallenge(challengeId: string) {
   await updateDoc(doc(db, 'challenges', challengeId), { flags: increment(-1) })
+}
+
+export async function softDeleteChallenge(id: string, removedBy: string, removedByDisplayName: string): Promise<void> {
+  await Promise.all([
+    updateDoc(doc(db, 'challenges', id), {
+      moderationStatus: 'removed',
+      removedBy,
+      removedByDisplayName,
+      removedAt: serverTimestamp(),
+    }),
+    deleteFeedItemByRefId(id),
+  ])
+}
+
+export function subscribeRemovedChallenges(callback: (challenges: Challenge[]) => void): Unsubscribe {
+  const q = query(collection(db, 'challenges'), where('moderationStatus', '==', 'removed'))
+  return onSnapshot(q, (snap) => {
+    const challenges = snap.docs.map(d => toChallenge(d.id, d.data()))
+    challenges.sort((a, b) => (b.removedAt?.getTime() ?? 0) - (a.removedAt?.getTime() ?? 0))
+    callback(challenges)
+  }, (err) => { console.error('subscribeRemovedChallenges error:', err); callback([]) })
+}
+
+export async function restoreChallenge(id: string): Promise<void> {
+  await updateDoc(doc(db, 'challenges', id), {
+    moderationStatus: 'active',
+    removedBy: null,
+    removedByDisplayName: null,
+    removedAt: null,
+  })
+}
+
+export async function deleteChallenge(id: string, topicId: string): Promise<void> {
+  await Promise.all([
+    deleteDoc(doc(db, 'challenges', id)),
+    deleteFeedItemByRefId(id),
+    decrementTopicCount(topicId, 'challengeCount'),
+  ])
 }

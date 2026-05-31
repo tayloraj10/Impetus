@@ -4,13 +4,14 @@ import {
   subscribeResources, createResource,
   likeResource, unlikeResource,
   notHelpfulResource, unNotHelpfulResource,
-  flagResource, unflagResource,
+  flagResource, unflagResource, softDeleteResource, deleteResource,
 } from '../../services/resourcesService'
 import { useAuth } from '../../hooks/useAuth'
 import { useLiked, useFlag } from '../../hooks/useLiked'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { FlagButton } from '../ui/FlagButton'
+import { ModerateButtons } from '../ui/ModerateButtons'
 import { Tooltip } from '../ui/Tooltip'
 import { Modal } from '../ui/Modal'
 import { Spinner } from '../ui/Spinner'
@@ -28,7 +29,7 @@ export function ResourcesComponent({ topic }: { topic: Topic }) {
   const [resources, setResources] = useState<Resource[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
-  const { user: _user } = useAuth()
+  const { role } = useAuth()
 
   useEffect(() => {
     const unsub = subscribeResources(topic.id, (data) => {
@@ -51,7 +52,7 @@ export function ResourcesComponent({ topic }: { topic: Topic }) {
         <EmptyState onAdd={() => setModalOpen(true)} />
       ) : (
         <div className="space-y-2">
-          {resources.map(r => <ResourceRow key={r.id} resource={r} />)}
+          {resources.map(r => <ResourceRow key={r.id} resource={r} role={role} />)}
         </div>
       )}
 
@@ -76,15 +77,25 @@ function ThumbsDown({ filled }: { filled: boolean }) {
   )
 }
 
-function ResourceRow({ resource }: { resource: Resource }) {
+function ResourceRow({ resource, role }: { resource: Resource; role: string | null }) {
   const helpful = useLiked(resource.id, 'helpful')
   const notHelpful = useLiked(resource.id, 'nothelpful')
   const { flagged, flag, unflag, canFlag } = useFlag(resource.id)
+  const canModerate = role === 'admin' || role === 'moderator'
+  const isAdmin = role === 'admin'
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors">
       <div className="flex flex-wrap items-center gap-2 mb-1">
         <Badge variant={typeColors[resource.type]}>{resource.type}</Badge>
+        {canModerate && (
+          <div className="ml-auto">
+            <ModerateButtons
+              onSoftDelete={(uid, name) => softDeleteResource(resource.id, uid, name)}
+              onHardDelete={isAdmin ? () => deleteResource(resource.id, resource.topicId) : undefined}
+            />
+          </div>
+        )}
       </div>
       <a
         href={resource.url}

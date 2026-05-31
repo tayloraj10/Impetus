@@ -4,13 +4,14 @@ import {
   subscribeEvents, createEvent,
   interestedEvent, uninterestedEvent,
   goingEvent, ungoingEvent,
-  flagEvent, unflagEvent,
+  flagEvent, unflagEvent, softDeleteEvent, deleteEvent,
 } from '../../services/eventsService'
 import { useAuth } from '../../hooks/useAuth'
 import { useLiked, useFlag } from '../../hooks/useLiked'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { FlagButton } from '../ui/FlagButton'
+import { ModerateButtons } from '../ui/ModerateButtons'
 import { Tooltip } from '../ui/Tooltip'
 import { Modal } from '../ui/Modal'
 import { Spinner } from '../ui/Spinner'
@@ -19,7 +20,7 @@ export function EventsComponent({ topic }: { topic: Topic }) {
   const [events, setEvents] = useState<ImpetusEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
-  const { user: _user } = useAuth()
+  const { role } = useAuth()
 
   useEffect(() => {
     const unsub = subscribeEvents(topic.id, (data) => {
@@ -46,11 +47,11 @@ export function EventsComponent({ topic }: { topic: Topic }) {
         <EmptyState onAdd={() => setModalOpen(true)} />
       ) : (
         <div className="space-y-2">
-          {upcoming.map(e => <EventCard key={e.id} event={e} />)}
+          {upcoming.map(e => <EventCard key={e.id} event={e} role={role} />)}
           {past.length > 0 && (
             <>
               <p className="text-zinc-600 text-xs pt-2 pb-1 uppercase tracking-wider">Past Events</p>
-              {past.map(e => <EventCard key={e.id} event={e} past />)}
+              {past.map(e => <EventCard key={e.id} event={e} past role={role} />)}
             </>
           )}
         </div>
@@ -78,10 +79,12 @@ function CheckCircleIcon({ filled }: { filled: boolean }) {
   )
 }
 
-function EventCard({ event, past = false }: { event: ImpetusEvent; past?: boolean }) {
+function EventCard({ event, past = false, role }: { event: ImpetusEvent; past?: boolean; role: string | null }) {
   const interested = useLiked(event.id, 'interested')
   const going = useLiked(event.id, 'going')
   const { flagged, flag, unflag, canFlag } = useFlag(event.id)
+  const canModerate = role === 'admin' || role === 'moderator'
+  const isAdmin = role === 'admin'
 
   return (
     <div className={`border rounded-xl p-4 transition-colors ${
@@ -100,6 +103,14 @@ function EventCard({ event, past = false }: { event: ImpetusEvent; past?: boolea
           <div className="flex items-center gap-2 mb-1">
             {event.isVirtual && <Badge variant="blue" size="sm">Virtual</Badge>}
             {event.location && <Badge variant="default" size="sm">{event.location}</Badge>}
+            {canModerate && (
+              <div className="ml-auto">
+                <ModerateButtons
+                  onSoftDelete={(uid, name) => softDeleteEvent(event.id, uid, name)}
+                  onHardDelete={isAdmin ? () => deleteEvent(event.id, event.topicId) : undefined}
+                />
+              </div>
+            )}
           </div>
           <a
             href={event.externalUrl}
