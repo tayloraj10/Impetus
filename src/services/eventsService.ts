@@ -8,6 +8,16 @@ import type { ImpetusEvent, CreateEventInput } from '../types'
 import { createFeedItem } from './feedService'
 import { incrementTopicCount } from './topicsService'
 
+function toEvent(id: string, data: any): ImpetusEvent {
+  return {
+    ...data,
+    id,
+    date: data.date?.toDate() ?? new Date(),
+    endDate: data.endDate?.toDate(),
+    createdAt: data.createdAt?.toDate() ?? new Date(),
+  }
+}
+
 export function subscribeEvents(topicId: string, callback: (events: ImpetusEvent[]) => void): Unsubscribe {
   const q = query(
     collection(db, 'events'),
@@ -16,7 +26,7 @@ export function subscribeEvents(topicId: string, callback: (events: ImpetusEvent
     orderBy('date', 'asc'),
   )
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() }) as ImpetusEvent))
+    callback(snap.docs.map(d => toEvent(d.id, d.data())))
   })
 }
 

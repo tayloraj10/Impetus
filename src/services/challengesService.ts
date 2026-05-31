@@ -8,6 +8,15 @@ import type { Challenge, ChallengeSubmission } from '../types'
 import { createFeedItem } from './feedService'
 import { incrementTopicCount } from './topicsService'
 
+function toChallenge(id: string, data: any): Challenge {
+  return {
+    ...data,
+    id,
+    deadline: data.deadline?.toDate(),
+    createdAt: data.createdAt?.toDate() ?? new Date(),
+  }
+}
+
 export function subscribeChallenges(topicId: string, callback: (challenges: Challenge[]) => void): Unsubscribe {
   const q = query(
     collection(db, 'challenges'),
@@ -16,7 +25,7 @@ export function subscribeChallenges(topicId: string, callback: (challenges: Chal
     orderBy('createdAt', 'desc'),
   )
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Challenge))
+    callback(snap.docs.map(d => toChallenge(d.id, d.data())))
   })
 }
 

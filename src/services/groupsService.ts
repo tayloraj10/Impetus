@@ -8,6 +8,15 @@ import type { Group, CreateGroupInput } from '../types'
 import { createFeedItem } from './feedService'
 import { incrementTopicCount } from './topicsService'
 
+function toGroup(id: string, data: any): Group {
+  return {
+    ...data,
+    id,
+    createdAt: data.createdAt?.toDate() ?? new Date(),
+    updatedAt: data.updatedAt?.toDate() ?? new Date(),
+  }
+}
+
 export function subscribeGroups(topicId: string, callback: (groups: Group[]) => void): Unsubscribe {
   const q = query(
     collection(db, 'groups'),
@@ -16,7 +25,7 @@ export function subscribeGroups(topicId: string, callback: (groups: Group[]) => 
     orderBy('likes', 'desc'),
   )
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Group))
+    callback(snap.docs.map(d => toGroup(d.id, d.data())))
   })
 }
 

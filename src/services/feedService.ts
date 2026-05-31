@@ -12,7 +12,7 @@ export function subscribeFeed(callback: (items: FeedItem[]) => void): Unsubscrib
     limit(60),
   )
   return onSnapshot(q, (snap) => {
-    const raw = snap.docs.map(d => ({ id: d.id, ...d.data() }) as FeedItem)
+    const raw = snap.docs.map(d => toFeedItem(d.id, d.data()))
     const scored = raw.map(item => ({ item, score: hotScore(item) }))
     scored.sort((a, b) => b.score - a.score)
     callback(scored.map(s => s.item))
@@ -22,10 +22,16 @@ export function subscribeFeed(callback: (items: FeedItem[]) => void): Unsubscrib
   })
 }
 
+function toFeedItem(id: string, data: any): FeedItem {
+  return {
+    ...data,
+    id,
+    createdAt: data.createdAt?.toDate() ?? new Date(),
+  }
+}
+
 function hotScore(item: FeedItem): number {
-  const ageHours = item.createdAt
-    ? (Date.now() - (item.createdAt as any).toMillis()) / 3_600_000
-    : 999
+  const ageHours = (Date.now() - item.createdAt.getTime()) / 3_600_000
   const recency = Math.max(0, 48 - ageHours) * 2
   return item.likes * 3 + recency
 }

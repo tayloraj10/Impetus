@@ -22,8 +22,8 @@ export function EventsComponent({ topic }: { topic: Topic }) {
   }, [topic.id])
 
   const now = Date.now()
-  const upcoming = events.filter(e => e.date.toMillis() >= now)
-  const past = events.filter(e => e.date.toMillis() < now)
+  const upcoming = events.filter(e => e.date.getTime() >= now)
+  const past = events.filter(e => e.date.getTime() < now)
 
   return (
     <div>
@@ -65,10 +65,10 @@ function EventCard({ event, past = false }: { event: ImpetusEvent; past?: boolea
     >
       <div className="text-center shrink-0 w-12">
         <div className="text-emerald-400 font-bold text-lg leading-none">
-          {event.date.toDate().getDate()}
+          {event.date.getDate()}
         </div>
         <div className="text-zinc-500 text-xs uppercase">
-          {event.date.toDate().toLocaleString('en-US', { month: 'short' })}
+          {event.date.toLocaleString('en-US', { month: 'short' })}
         </div>
       </div>
       <div className="flex-1 min-w-0">

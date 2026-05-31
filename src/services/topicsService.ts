@@ -6,6 +6,16 @@ import {
 import { db } from '../config/firebase'
 import type { Topic } from '../types'
 
+function toTopic(id: string, data: any): Topic {
+  return {
+    ...data,
+    id,
+    createdAt: data.createdAt?.toDate() ?? new Date(),
+    updatedAt: data.updatedAt?.toDate() ?? new Date(),
+    lastActivityAt: data.lastActivityAt?.toDate() ?? new Date(),
+  }
+}
+
 export function subscribeTopics(callback: (topics: Topic[]) => void): Unsubscribe {
   const q = query(
     collection(db, 'topics'),
@@ -13,7 +23,7 @@ export function subscribeTopics(callback: (topics: Topic[]) => void): Unsubscrib
     orderBy('activityScore', 'desc'),
   )
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Topic))
+    callback(snap.docs.map(d => toTopic(d.id, d.data())))
   }, (err) => {
     console.error('subscribeTopics error:', err)
     callback([])
@@ -25,7 +35,7 @@ export function subscribeTopic(slug: string, callback: (topic: Topic | null) => 
   return onSnapshot(q, (snap) => {
     if (snap.empty) { callback(null); return }
     const d = snap.docs[0]
-    callback({ id: d.id, ...d.data() } as Topic)
+    callback(toTopic(d.id, d.data()))
   })
 }
 

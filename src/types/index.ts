@@ -1,5 +1,3 @@
-import type { Timestamp } from 'firebase/firestore'
-
 export type ComponentType = 'groups' | 'resources' | 'events' | 'challenges'
 
 export type ModerationStatus = 'live' | 'pending_review' | 'pending_approval' | 'rejected'
@@ -13,10 +11,10 @@ export interface Topic {
   enabledComponents: ComponentType[]
   status: 'active' | 'pending' | 'archived'
   createdBy: string
-  createdAt: Timestamp
-  updatedAt: Timestamp
+  createdAt: Date
+  updatedAt: Date
   activityScore: number
-  lastActivityAt: Timestamp
+  lastActivityAt: Date
   groupCount: number
   resourceCount: number
   eventCount: number
@@ -33,7 +31,7 @@ export interface FeedItem {
   title: string
   description?: string
   url?: string
-  createdAt: Timestamp
+  createdAt: Date
   likes: number
   submittedBy: string
   submittedByDisplayName?: string
@@ -59,8 +57,8 @@ export interface Group {
   moderationStatus: ModerationStatus
   submittedBy: string
   submittedByDisplayName?: string
-  createdAt: Timestamp
-  updatedAt: Timestamp
+  createdAt: Date
+  updatedAt: Date
   likes: number
   flags: number
 }
@@ -75,7 +73,7 @@ export interface Resource {
   moderationStatus: ModerationStatus
   submittedBy: string
   submittedByDisplayName?: string
-  createdAt: Timestamp
+  createdAt: Date
   likes: number
   flags: number
 }
@@ -84,8 +82,8 @@ export interface ImpetusEvent {
   id: string
   topicId: string
   title: string
-  date: Timestamp
-  endDate?: Timestamp
+  date: Date
+  endDate?: Date
   location?: string
   isVirtual: boolean
   externalUrl: string
@@ -93,7 +91,7 @@ export interface ImpetusEvent {
   moderationStatus: ModerationStatus
   submittedBy: string
   submittedByDisplayName?: string
-  createdAt: Timestamp
+  createdAt: Date
 }
 
 export interface Challenge {
@@ -102,11 +100,11 @@ export interface Challenge {
   title: string
   description: string
   actionPrompt: string
-  deadline?: Timestamp
+  deadline?: Date
   type: 'individual' | 'group_competition'
   moderationStatus: 'active' | 'ended' | 'pending_approval' | 'rejected'
   createdBy: string
-  createdAt: Timestamp
+  createdAt: Date
   participantCount: number
 }
 
@@ -118,7 +116,7 @@ export interface ChallengeSubmission {
   userDisplayName: string
   proofImageUrl?: string
   note?: string
-  createdAt: Timestamp
+  createdAt: Date
 }
 
 export interface TopicSuggestion {
@@ -128,7 +126,7 @@ export interface TopicSuggestion {
   suggestedBy: string
   suggestedByDisplayName?: string
   status: 'pending' | 'approved' | 'rejected'
-  createdAt: Timestamp
+  createdAt: Date
 }
 
 export interface UserProfile {
@@ -137,7 +135,7 @@ export interface UserProfile {
   email: string
   photoURL?: string
   role: 'user' | 'moderator' | 'admin'
-  createdAt: Timestamp
+  createdAt: Date
 }
 
 export interface CreateGroupInput {

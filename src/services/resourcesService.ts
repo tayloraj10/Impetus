@@ -8,6 +8,14 @@ import type { Resource, CreateResourceInput } from '../types'
 import { createFeedItem } from './feedService'
 import { incrementTopicCount } from './topicsService'
 
+function toResource(id: string, data: any): Resource {
+  return {
+    ...data,
+    id,
+    createdAt: data.createdAt?.toDate() ?? new Date(),
+  }
+}
+
 export function subscribeResources(topicId: string, callback: (resources: Resource[]) => void): Unsubscribe {
   const q = query(
     collection(db, 'resources'),
@@ -16,8 +24,7 @@ export function subscribeResources(topicId: string, callback: (resources: Resour
     orderBy('likes', 'desc'),
   )
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Resource)
-    )
+    callback(snap.docs.map(d => toResource(d.id, d.data())))
   })
 }
 
