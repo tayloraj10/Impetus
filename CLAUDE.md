@@ -48,6 +48,7 @@ Pluggable modules that attach to a topic. Not every component makes sense for ev
 | Database | Firebase Firestore | Real-time out of the box, generous free tier, no cold starts |
 | Auth | Firebase Auth (Google Sign-In) | Already have Firebase project, easy to set up |
 | Hosting | Firebase Hosting | Everything in one place |
+| Storage | Firebase Storage | Image uploads (topic cover images) |
 | Fonts | Inter via Google Fonts | Clean, readable |
 
 **Firebase project:** `impetus-a9558`
@@ -57,7 +58,7 @@ All Firestore/Firebase calls go through `src/services/`. React components never 
 
 ```
 src/config/firebase.ts     ← only place Firebase app is initialized
-src/services/              ← all Firestore reads/writes live here
+src/services/              ← all Firestore reads/writes and Storage uploads live here
 src/hooks/                 ← React hooks that wrap services
 src/components/            ← never import firebase directly
 ```
@@ -132,6 +133,11 @@ Items with lots of recent likes float up. Items older than 48 hours get no recen
 - Mobile-responsive from day one (web only for now, React Native later if needed)
 - Single page app with React Router — no full page reloads
 
+### Layout Model
+- **Desktop (`lg:`):** Viewport-locked — outer container is `h-[calc(100vh-3.5rem)]` (nav is `h-14`). Sidebar and main feed each scroll independently via `overflow-y-auto`. No page-level scroll.
+- **Mobile:** Normal page scroll. Sidebar replaced by two horizontal chip-filter rows (topics + activity type) above the feed. Chips use `overflow-x-auto` with hidden scrollbars for swipe UX.
+- **HomePage feed:** Displays topics grouped with their 3 most recent activity items (`TopicActivityCard`), not a flat item list. Filtering is by topic and/or activity type.
+
 ---
 
 ## Project Structure
@@ -147,17 +153,23 @@ impetus/
 │   │   ├── groupsService.ts
 │   │   ├── resourcesService.ts
 │   │   ├── eventsService.ts
-│   │   └── challengesService.ts
+│   │   ├── challengesService.ts
+│   │   ├── storageService.ts   ← Firebase Storage uploads (topic cover images)
+│   │   └── seedService.ts      ← demo seed data for all topics
 │   ├── hooks/
-│   │   ├── useAuth.tsx       ← AuthProvider + useAuth hook
+│   │   ├── useAuth.tsx         ← AuthProvider + useAuth hook
 │   │   ├── useFeed.ts
-│   │   └── useTopics.ts      ← useTopics + useTopic
+│   │   ├── useTopicFeed.ts     ← grouped topic+activity data for HomePage
+│   │   ├── useTopics.ts        ← useTopics + useTopic
+│   │   └── useLiked.ts         ← liked state for feed items
 │   ├── types/index.ts
 │   ├── utils/time.ts
 │   ├── components/
-│   │   ├── ui/               ← Button, Badge, Spinner, Modal
+│   │   ├── ui/                 ← Button, Badge, Spinner, Modal
 │   │   ├── layout/Header.tsx
-│   │   ├── feed/FeedCard.tsx
+│   │   ├── feed/
+│   │   │   ├── FeedCard.tsx
+│   │   │   └── TopicActivityCard.tsx  ← grouped topic card with recent activity rows
 │   │   └── topic-components/
 │   │       ├── GroupsComponent.tsx
 │   │       ├── ResourcesComponent.tsx
@@ -201,7 +213,7 @@ impetus/
 7. **Content Creators component**
 8. **Boycotts component**
 9. **Data/Visualizations component**
-10. **Image upload for challenge submissions** — Firebase Storage needed
+10. **Image upload for challenge submissions** — Firebase Storage is set up (`storageService.ts`) and used for topic cover images; challenge proof upload UI still needs wiring
 11. **Push notifications / email digest**
 12. **React Native mobile app** (future, after web is solid)
 
