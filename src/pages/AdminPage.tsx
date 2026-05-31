@@ -19,6 +19,7 @@ import {
 } from '../services/challengesService'
 import { uploadImage, topicImagePath } from '../services/storageService'
 import { seedAllTopics } from '../services/seedService'
+import { wipeContentCollections } from '../services/devService'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { formatTimeAgo, formatDate } from '../utils/time'
@@ -171,40 +172,71 @@ function TopicRow({ topic: t, onEdit }: { topic: Topic; onEdit: () => void }) {
 
 function SeedPanel() {
   const { user } = useAuth()
-  const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
+  const [seedStatus, setSeedStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
+  const [wipeStatus, setWipeStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
   const [error, setError] = useState('')
 
   async function handleSeed() {
     if (!user) return
     if (!confirm('Seed all topics with demo data? This will wipe and re-populate existing seed content.')) return
-    setStatus('running')
+    setSeedStatus('running')
     try {
       await seedAllTopics(user.uid, user.displayName ?? 'Admin')
-      setStatus('done')
+      setSeedStatus('done')
     } catch (e: any) {
       setError(e.message ?? 'Unknown error')
-      setStatus('error')
+      setSeedStatus('error')
+    }
+  }
+
+  async function handleWipe() {
+    if (!confirm('Wipe all content? This permanently deletes all groups, resources, events, challenges, submissions, feed items, and topic suggestions. Topics and users are preserved.')) return
+    setWipeStatus('running')
+    try {
+      await wipeContentCollections()
+      setWipeStatus('done')
+    } catch (e: any) {
+      setError(e.message ?? 'Unknown error')
+      setWipeStatus('error')
     }
   }
 
   return (
     <section className="mb-8 p-4 border border-dashed border-zinc-700 rounded-xl bg-zinc-900/40">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-zinc-300 text-sm font-medium">Demo Seed</p>
+      <p className="text-zinc-300 text-sm font-medium mb-3">Dev Tools</p>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
+          <p className="text-zinc-400 text-xs font-medium">Seed Data</p>
           <p className="text-zinc-500 text-xs mt-0.5">
-            Populates all topics with realistic data and staggered timestamps for feed testing. Safe to re-run — wipes existing seed data first.
+            Populates all topics with realistic data and staggered timestamps for feed testing.
           </p>
-          {status === 'done' && <p className="text-emerald-400 text-xs mt-1">All topics seeded successfully.</p>}
-          {status === 'error' && <p className="text-red-400 text-xs mt-1">Error: {error}</p>}
+          {seedStatus === 'done' && <p className="text-emerald-400 text-xs mt-1">All topics seeded successfully.</p>}
+          {seedStatus === 'error' && <p className="text-red-400 text-xs mt-1">Error: {error}</p>}
         </div>
         <Button
           variant="secondary"
           onClick={handleSeed}
-          disabled={status === 'running' || status === 'done'}
+          disabled={seedStatus === 'running' || seedStatus === 'done'}
         >
-          {status === 'running' ? 'Seeding…' : status === 'done' ? 'Done' : 'Seed All Topics'}
+          {seedStatus === 'running' ? 'Seeding…' : seedStatus === 'done' ? 'Done' : 'Seed All Topics'}
         </Button>
+      </div>
+      <div className="flex items-start justify-between gap-4 mt-4 pt-4 border-t border-zinc-800">
+        <div className="flex-1">
+          <p className="text-zinc-400 text-xs font-medium">Wipe Content</p>
+          <p className="text-zinc-500 text-xs mt-0.5">
+            Deletes all content (feed, groups, resources, events, challenges, submissions, suggestions). Topics and users are preserved.
+          </p>
+          {wipeStatus === 'done' && <p className="text-emerald-400 text-xs mt-1">Content wiped.</p>}
+          {wipeStatus === 'error' && <p className="text-red-400 text-xs mt-1">Error: {error}</p>}
+        </div>
+        <button
+          onClick={handleWipe}
+          disabled={wipeStatus === 'running' || wipeStatus === 'done'}
+          className="shrink-0 text-xs px-3 py-1.5 rounded-lg border border-red-800 text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {wipeStatus === 'running' ? 'Wiping…' : wipeStatus === 'done' ? 'Done' : 'Wipe DB'}
+        </button>
       </div>
     </section>
   )
