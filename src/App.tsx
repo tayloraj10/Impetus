@@ -5,6 +5,7 @@ import { HomePage } from './pages/HomePage'
 import { TopicsPage } from './pages/TopicsPage'
 import { TopicPage } from './pages/TopicPage'
 import { AdminPage } from './pages/AdminPage'
+import { GroupsPage } from './pages/GroupsPage'
 
 export function App() {
   return (
@@ -16,6 +17,7 @@ export function App() {
             <Route path="/" element={<HomePage />} />
             <Route path="/topics" element={<TopicsPage />} />
             <Route path="/topic/:slug" element={<TopicPage />} />
+            <Route path="/groups" element={<GroupsPage />} />
             <Route path="/admin" element={<AdminPage />} />
           </Routes>
         </div>

@@ -43,6 +43,7 @@ export interface Group {
   topicId: string
   name: string
   description: string
+  imageUrl?: string
   location?: {
     city?: string
     state?: string
@@ -143,6 +144,7 @@ export interface CreateGroupInput {
   topicId: string
   name: string
   description: string
+  imageUrl?: string
   location?: Group['location']
   links?: Group['links']
 }

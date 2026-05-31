@@ -17,6 +17,17 @@ function toGroup(id: string, data: any): Group {
   }
 }
 
+export function subscribeAllGroups(callback: (groups: Group[]) => void): Unsubscribe {
+  const q = query(
+    collection(db, 'groups'),
+    where('moderationStatus', '==', 'live'),
+    orderBy('createdAt', 'desc'),
+  )
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => toGroup(d.id, d.data())))
+  })
+}
+
 export function subscribeGroups(topicId: string, callback: (groups: Group[]) => void): Unsubscribe {
   const q = query(
     collection(db, 'groups'),
@@ -39,6 +50,7 @@ export async function createGroup(
   const ref = await addDoc(collection(db, 'groups'), {
     ...input,
     links: input.links ?? {},
+    imageUrl: input.imageUrl ?? null,
     moderationStatus: 'pending_review',
     submittedBy: userId,
     submittedByDisplayName: displayName,

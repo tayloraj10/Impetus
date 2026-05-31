@@ -18,6 +18,7 @@ export function Header() {
         <nav className="hidden sm:flex items-center gap-1">
           <NavLink to="/" active={pathname === '/'}>Feed</NavLink>
           <NavLink to="/topics" active={pathname === '/topics'}>Topics</NavLink>
+          <NavLink to="/groups" active={pathname === '/groups'}>Groups</NavLink>
           {(role === 'admin' || role === 'moderator') && (
             <NavLink to="/admin" active={pathname.startsWith('/admin')}>Admin</NavLink>
           )}

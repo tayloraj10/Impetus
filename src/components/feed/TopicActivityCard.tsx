@@ -135,7 +135,7 @@ export function TopicActivityCard({ topic, items, totalCount }: TopicActivityCar
       <Link to={`/topic/${topic.slug}`} className="block">
 
         {/* Image or gradient placeholder — always shown */}
-        <div className="relative h-28 overflow-hidden">
+        <div className={`relative overflow-hidden ${topic.imageUrl ? 'h-28' : 'h-14'}`}>
           {topic.imageUrl ? (
             <img
               src={topic.imageUrl}

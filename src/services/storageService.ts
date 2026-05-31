@@ -16,3 +16,9 @@ export function topicImagePath(topicSlug: string, file: File): string {
   const ext = file.name.split('.').pop()
   return `topics/${topicSlug}/cover.${ext}`
 }
+
+export function groupLogoPath(file: File): string {
+  const ext = file.name.split('.').pop()
+  const uid = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return `groups/logos/${uid}.${ext}`
+}

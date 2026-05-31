@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import type { Group, CreateGroupInput, Topic } from '../../types'
 import { subscribeGroups, createGroup, likeGroup, unlikeGroup } from '../../services/groupsService'
+import { uploadImage, groupLogoPath } from '../../services/storageService'
 import { useAuth } from '../../hooks/useAuth'
 import { useLiked } from '../../hooks/useLiked'
 import { Button } from '../ui/Button'
@@ -50,32 +51,54 @@ export function GroupsComponent({ topic }: { topic: Topic }) {
   )
 }
 
+export function GroupLogo({ group, size = 'md' }: { group: Group; size?: 'sm' | 'md' | 'lg' }) {
+  const sizeClass = size === 'sm' ? 'w-8 h-8 text-xs' : size === 'lg' ? 'w-14 h-14 text-xl' : 'w-10 h-10 text-sm'
+  if (group.imageUrl) {
+    return (
+      <img
+        src={group.imageUrl}
+        alt={group.name}
+        className={`${sizeClass} rounded-lg object-cover flex-shrink-0 border border-zinc-700`}
+      />
+    )
+  }
+  return (
+    <div className={`${sizeClass} rounded-lg bg-zinc-800 border border-zinc-700 flex items-center justify-center flex-shrink-0 font-bold text-zinc-400`}>
+      {group.name.charAt(0).toUpperCase()}
+    </div>
+  )
+}
+
 function GroupCard({ group }: { group: Group }) {
   const hasLinks = Object.values(group.links ?? {}).some(Boolean)
   const { liked, toggle, canLike } = useLiked(group.id)
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors">
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="text-zinc-100 font-semibold text-sm">{group.name}</h3>
-        <LikeButton
-          count={group.likes}
-          liked={liked}
-          onToggle={() => toggle(() => likeGroup(group.id), () => unlikeGroup(group.id))}
-          canLike={canLike}
-        />
+      <div className="flex items-start gap-3 mb-2">
+        <GroupLogo group={group} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <h3 className="text-zinc-100 font-semibold text-sm leading-snug truncate">{group.name}</h3>
+            <LikeButton
+              count={group.likes}
+              liked={liked}
+              onToggle={() => toggle(() => likeGroup(group.id), () => unlikeGroup(group.id))}
+              canLike={canLike}
+            />
+          </div>
+          {group.location && (
+            <p className="text-zinc-500 text-xs mt-0.5">
+              {[group.location.city, group.location.state, group.location.country].filter(Boolean).join(', ')}
+            </p>
+          )}
+        </div>
       </div>
 
       <p className="text-zinc-400 text-sm leading-relaxed mb-3 line-clamp-3">{group.description}</p>
 
-      {group.location && (
-        <p className="text-zinc-500 text-xs mb-2">
-          {[group.location.city, group.location.state, group.location.country].filter(Boolean).join(', ')}
-        </p>
-      )}
-
       {hasLinks && (
-        <div className="flex flex-wrap gap-2 mt-3">
+        <div className="flex flex-wrap gap-2">
           {group.links.website && <SocialLink href={group.links.website} label="Website" />}
           {group.links.instagram && <SocialLink href={group.links.instagram} label="Instagram" />}
           {group.links.facebook && <SocialLink href={group.links.facebook} label="Facebook" />}
@@ -119,8 +142,11 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
     location: { city: '', state: '', country: '' },
     links: { website: '', instagram: '', facebook: '', twitter: '' },
   })
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function set(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }))
@@ -131,13 +157,28 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
   function setLoc(field: string, value: string) {
     setForm(f => ({ ...f, location: { ...f.location, [field]: value } }))
   }
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+  function clearImage() {
+    setImageFile(null)
+    setImagePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
     setSubmitting(true)
     try {
-      await createGroup(form, user.uid, user.displayName ?? 'Anonymous', topic.title, topic.slug)
+      let imageUrl: string | undefined
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile, groupLogoPath(imageFile))
+      }
+      await createGroup({ ...form, imageUrl }, user.uid, user.displayName ?? 'Anonymous', topic.title, topic.slug)
       setDone(true)
     } finally {
       setSubmitting(false)
@@ -148,7 +189,9 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
     return (
       <Modal open={open} onClose={() => { onClose(); setDone(false) }} title="Group Submitted">
         <div className="text-center py-4">
-          <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3"><span className="text-emerald-400 text-sm font-bold">✓</span></div>
+          <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3">
+            <span className="text-emerald-400 text-sm font-bold">✓</span>
+          </div>
           <p className="text-zinc-300 text-sm">Your group has been submitted for review. It will appear once a moderator approves it.</p>
           <Button className="mt-4" onClick={() => { onClose(); setDone(false) }}>Done</Button>
         </div>
@@ -165,6 +208,34 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
         <Field label="Description *">
           <textarea required rows={3} value={form.description} onChange={e => set('description', e.target.value)} placeholder="What does this group do?" />
         </Field>
+
+        {/* Logo upload */}
+        <div>
+          <span className="block text-xs text-zinc-400 mb-1">Logo / Image</span>
+          {imagePreview ? (
+            <div className="flex items-center gap-3">
+              <img src={imagePreview} alt="Preview" className="w-14 h-14 rounded-lg object-cover border border-zinc-700" />
+              <button
+                type="button"
+                onClick={clearImage}
+                className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full h-16 border border-dashed border-zinc-700 rounded-lg flex items-center justify-center gap-2 text-zinc-500 hover:border-zinc-500 hover:text-zinc-400 transition-colors text-sm"
+            >
+              <span className="text-base">+</span>
+              <span>Upload logo</span>
+            </button>
+          )}
+          <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
+        </div>
+
         <div className="grid grid-cols-3 gap-2">
           <Field label="City">
             <input value={form.location?.city ?? ''} onChange={e => setLoc('city', e.target.value)} placeholder="Boston" />
@@ -208,5 +279,3 @@ function Field({ label, children }: { label: string; children: React.ReactElemen
     </label>
   )
 }
-
-import React from 'react'
