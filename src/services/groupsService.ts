@@ -1,6 +1,6 @@
 import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, serverTimestamp, increment,
+  doc, getDoc, serverTimestamp, increment,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
@@ -18,6 +18,12 @@ function toGroup(id: string, data: any): Group {
     updatedAt: data.updatedAt?.toDate() ?? new Date(),
     removedAt: data.removedAt?.toDate(),
   }
+}
+
+export async function getGroup(id: string): Promise<Group | null> {
+  const snap = await getDoc(doc(db, 'groups', id))
+  if (!snap.exists()) return null
+  return toGroup(snap.id, snap.data())
 }
 
 export function subscribeAllGroups(callback: (groups: Group[]) => void): Unsubscribe {

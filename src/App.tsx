@@ -6,6 +6,7 @@ import { TopicsPage } from './pages/TopicsPage'
 import { TopicPage } from './pages/TopicPage'
 import { AdminPage } from './pages/AdminPage'
 import { GroupsPage } from './pages/GroupsPage'
+import { GroupPage } from './pages/GroupPage'
 import { SearchPage } from './pages/SearchPage'
 
 export function App() {
@@ -19,6 +20,7 @@ export function App() {
             <Route path="/topics" element={<TopicsPage />} />
             <Route path="/topic/:slug" element={<TopicPage />} />
             <Route path="/groups" element={<GroupsPage />} />
+            <Route path="/groups/:id" element={<GroupPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/search" element={<SearchPage />} />
           </Routes>

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
 import type { Group, CreateGroupInput, Topic } from '../../types'
 import { subscribeGroups, createGroup, likeGroup, unlikeGroup, flagGroup, unflagGroup, softDeleteGroup, deleteGroup } from '../../services/groupsService'
 import { uploadImage, groupLogoPath } from '../../services/storageService'
@@ -88,13 +89,13 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
   const isAdmin = role === 'admin'
 
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors">
+    <Link to={`/groups/${group.id}`} className="block bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-600 hover:bg-zinc-800/60 transition-colors">
       <div className="flex items-start gap-3 mb-2">
         <GroupLogo group={group} />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h3 className="text-zinc-100 font-semibold text-sm leading-snug truncate">{group.name}</h3>
+              <span className="text-zinc-100 font-semibold text-sm leading-snug truncate block">{group.name}</span>
               {group.category && (
                 <span className="text-xs text-zinc-500">{group.category}</span>
               )}
@@ -106,14 +107,16 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
                 </Tooltip>
               )}
               {canModerate && (
-                <ModerateButtons
-                  onSoftDelete={(uid, name) => softDeleteGroup(group.id, uid, name)}
-                  onHardDelete={isAdmin ? () => deleteGroup(group.id, group.topicId) : undefined}
-                />
+                <span onClick={e => e.preventDefault()}>
+                  <ModerateButtons
+                    onSoftDelete={(uid, name) => softDeleteGroup(group.id, uid, name)}
+                    onHardDelete={isAdmin ? () => deleteGroup(group.id, group.topicId) : undefined}
+                  />
+                </span>
               )}
               <Tooltip text={liked ? 'Remove confirmation' : canLike ? 'Confirm this group is active' : 'Sign in to confirm'}>
                 <button
-                  onClick={e => { e.stopPropagation(); toggle(() => likeGroup(group.id), () => unlikeGroup(group.id)) }}
+                  onClick={e => { e.preventDefault(); toggle(() => likeGroup(group.id), () => unlikeGroup(group.id)) }}
                   className={`flex items-center gap-1 text-xs transition-colors select-none cursor-pointer ${
                     liked ? 'text-emerald-400' : canLike ? 'text-zinc-500 hover:text-emerald-400' : 'text-zinc-600 cursor-default'
                   }`}
@@ -122,12 +125,14 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
                   <span>{group.likes}</span>
                 </button>
               </Tooltip>
-              <FlagButton
-                flagged={flagged}
-                onFlag={() => flag(() => flagGroup(group.id))}
-                onUnflag={() => unflag(() => unflagGroup(group.id))}
-                canFlag={canFlag}
-              />
+              <span onClick={e => e.preventDefault()}>
+                <FlagButton
+                  flagged={flagged}
+                  onFlag={() => flag(() => flagGroup(group.id))}
+                  onUnflag={() => unflag(() => unflagGroup(group.id))}
+                  canFlag={canFlag}
+                />
+              </span>
             </div>
           </div>
           {group.location && (
@@ -141,7 +146,7 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
       <p className="text-zinc-400 text-sm leading-relaxed mb-3 line-clamp-3">{group.description}</p>
 
       {hasLinks && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" onClick={e => e.preventDefault()}>
           {group.links.website && <SocialLink href={group.links.website} label="Website" />}
           {group.links.instagram && <SocialLink href={socialUrl('instagram', group.links.instagram)} label="Instagram" />}
           {group.links.tiktok && <SocialLink href={socialUrl('tiktok', group.links.tiktok)} label="TikTok" />}
@@ -150,7 +155,7 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
           {group.links.twitter && <SocialLink href={socialUrl('twitter', group.links.twitter)} label="Twitter" />}
         </div>
       )}
-    </div>
+    </Link>
   )
 }
 
