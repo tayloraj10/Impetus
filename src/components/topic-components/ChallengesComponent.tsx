@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react'
-import type { Challenge, Topic } from '../../types'
+import React, { useEffect, useRef, useState } from 'react'
+import type { Challenge, ChallengeSubmission, Topic } from '../../types'
 import {
-  subscribeChallenges, createChallenge, submitChallengeAction,
+  subscribeChallenges, subscribeChallengeSubmissions,
+  createChallenge, submitChallengeAction,
   upvoteChallenge, unupvoteChallenge, flagChallenge, unflagChallenge,
 } from '../../services/challengesService'
 import { useAuth } from '../../hooks/useAuth'
@@ -12,7 +13,7 @@ import { FlagButton } from '../ui/FlagButton'
 import { Tooltip } from '../ui/Tooltip'
 import { Modal } from '../ui/Modal'
 import { Spinner } from '../ui/Spinner'
-import { formatDate } from '../../utils/time'
+import { formatDate, formatTimeAgo } from '../../utils/time'
 
 export function ChallengesComponent({ topic }: { topic: Topic }) {
   const [challenges, setChallenges] = useState<Challenge[]>([])
@@ -66,8 +67,20 @@ function ThumbsUp({ filled }: { filled: boolean }) {
   )
 }
 
+function ChevronDown({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`}
+      viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+    >
+      <path d="M5 8l5 5 5-5" />
+    </svg>
+  )
+}
+
 function ChallengeCard({ challenge, ended = false }: { challenge: Challenge; ended?: boolean }) {
   const [actionOpen, setActionOpen] = useState(false)
+  const [submissionsOpen, setSubmissionsOpen] = useState(false)
   const { user } = useAuth()
   const { liked, toggle, canLike } = useLiked(challenge.id, 'upvoted')
   const { flagged, flag, unflag, canFlag } = useFlag(challenge.id)
@@ -91,7 +104,7 @@ function ChallengeCard({ challenge, ended = false }: { challenge: Challenge; end
           )}
 
           <div className="flex items-center gap-4 mt-3 text-xs text-zinc-500">
-            <span>{challenge.participantCount} participants</span>
+            <span>{challenge.participantCount} participant{challenge.participantCount !== 1 ? 's' : ''}</span>
             {challenge.deadline && <span>Ends {formatDate(challenge.deadline)}</span>}
           </div>
         </div>
@@ -122,60 +135,195 @@ function ChallengeCard({ challenge, ended = false }: { challenge: Challenge; end
         />
       </div>
 
+      {challenge.participantCount > 0 && (
+        <div className="mt-3 border-t border-zinc-800/70 pt-3">
+          <button
+            onClick={() => setSubmissionsOpen(o => !o)}
+            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-zinc-200 transition-colors"
+          >
+            <ChevronDown open={submissionsOpen} />
+            <span>
+              {challenge.participantCount} submission{challenge.participantCount !== 1 ? 's' : ''}
+            </span>
+          </button>
+          {submissionsOpen && (
+            <SubmissionsPanel challengeId={challenge.id} />
+          )}
+        </div>
+      )}
+
       <SubmitActionModal
         open={actionOpen}
         onClose={() => setActionOpen(false)}
         challenge={challenge}
+        onSubmitted={() => setSubmissionsOpen(true)}
       />
     </div>
   )
 }
 
-function SubmitActionModal({ open, onClose, challenge }: { open: boolean; onClose: () => void; challenge: Challenge }) {
+function SubmissionsPanel({ challengeId }: { challengeId: string }) {
+  const [submissions, setSubmissions] = useState<ChallengeSubmission[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const unsub = subscribeChallengeSubmissions(challengeId, (data) => {
+      setSubmissions(data)
+      setLoading(false)
+    })
+    return unsub
+  }, [challengeId])
+
+  if (loading) {
+    return <div className="flex justify-center py-6"><Spinner /></div>
+  }
+
+  if (submissions.length === 0) {
+    return <p className="text-zinc-600 text-xs text-center py-4">No submissions yet</p>
+  }
+
+  return (
+    <div className="mt-3 space-y-4 max-h-[28rem] overflow-y-auto pr-1">
+      {submissions.map(s => <SubmissionItem key={s.id} submission={s} />)}
+    </div>
+  )
+}
+
+function SubmissionItem({ submission }: { submission: ChallengeSubmission }) {
+  const initials = submission.userDisplayName
+    .split(' ')
+    .filter(Boolean)
+    .map(w => w[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || '?'
+
+  return (
+    <div className="flex gap-3">
+      <div className="w-7 h-7 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-semibold flex items-center justify-center shrink-0 mt-0.5">
+        {initials}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="text-zinc-200 text-sm font-medium">{submission.userDisplayName}</span>
+          <span className="text-zinc-600 text-xs">{formatTimeAgo(submission.createdAt)}</span>
+        </div>
+        {submission.note && (
+          <p className="text-zinc-400 text-sm mt-1 leading-snug">{submission.note}</p>
+        )}
+        {submission.proofImageUrl && (
+          <a
+            href={submission.proofImageUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 block w-fit"
+          >
+            <img
+              src={submission.proofImageUrl}
+              alt="Proof"
+              className="rounded-lg max-h-48 max-w-full object-cover border border-zinc-700 hover:border-emerald-500/50 transition-colors"
+            />
+          </a>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SubmitActionModal({
+  open, onClose, challenge, onSubmitted,
+}: {
+  open: boolean
+  onClose: () => void
+  challenge: Challenge
+  onSubmitted: () => void
+}) {
   const { user } = useAuth()
   const [note, setNote] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imageError, setImageError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 10 * 1024 * 1024) {
+      setImageError('Image must be under 10 MB')
+      return
+    }
+    setImageError(null)
+    setImageFile(file)
+    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  function clearImage() {
+    if (imagePreview) URL.revokeObjectURL(imagePreview)
+    setImageFile(null)
+    setImagePreview(null)
+    setImageError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
     setSubmitting(true)
     try {
-      await submitChallengeAction(challenge.id, {
-        challengeId: challenge.id,
-        topicId: challenge.topicId,
-        userId: user.uid,
-        userDisplayName: user.displayName ?? 'Anonymous',
-        note,
-      })
+      await submitChallengeAction(
+        challenge.id,
+        {
+          challengeId: challenge.id,
+          topicId: challenge.topicId,
+          userId: user.uid,
+          userDisplayName: user.displayName ?? 'Anonymous',
+          note,
+        },
+        imageFile ?? undefined,
+      )
       setDone(true)
     } finally {
       setSubmitting(false)
     }
   }
 
+  function handleClose() {
+    onClose()
+    setDone(false)
+    setNote('')
+    clearImage()
+  }
+
   if (done) {
     return (
-      <Modal open={open} onClose={() => { onClose(); setDone(false) }} title="Action Logged!">
+      <Modal open={open} onClose={() => { handleClose(); onSubmitted() }} title="Action Logged!">
         <div className="text-center py-4">
-          <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3"><span className="text-emerald-400 text-sm font-bold">✓</span></div>
-          <p className="text-zinc-300 text-sm">Your action has been logged. Thanks for making a difference!</p>
-          <Button className="mt-4" onClick={() => { onClose(); setDone(false) }}>Done</Button>
+          <div className="w-10 h-10 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3">
+            <svg className="w-5 h-5 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
+          <p className="text-zinc-200 font-medium text-sm mb-1">Thanks for taking action!</p>
+          <p className="text-zinc-400 text-sm">Your submission is now visible to others.</p>
+          <Button className="mt-4" onClick={() => { handleClose(); onSubmitted() }}>See submissions</Button>
         </div>
       </Modal>
     )
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Log Your Action">
+    <Modal open={open} onClose={handleClose} title="Log Your Action">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-3">
-          <p className="text-emerald-400 text-sm font-medium">Challenge:</p>
-          <p className="text-zinc-300 text-sm mt-1">{challenge.actionPrompt}</p>
+          <p className="text-emerald-400 text-xs font-medium uppercase tracking-wide mb-1">The challenge</p>
+          <p className="text-zinc-300 text-sm">{challenge.actionPrompt}</p>
         </div>
+
         <label className="block">
-          <span className="block text-xs text-zinc-400 mb-1">Tell us what you did (optional)</span>
+          <span className="block text-xs text-zinc-400 mb-1">What did you do? (optional)</span>
           <textarea
             rows={3}
             value={note}
@@ -184,9 +332,47 @@ function SubmitActionModal({ open, onClose, challenge }: { open: boolean; onClos
             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors resize-none"
           />
         </label>
+
+        <div>
+          <span className="block text-xs text-zinc-400 mb-1">Proof photo (optional)</span>
+          {imagePreview ? (
+            <div className="relative w-fit">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="rounded-lg max-h-48 max-w-full object-cover border border-zinc-700"
+              />
+              <button
+                type="button"
+                onClick={clearImage}
+                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-zinc-900/90 text-zinc-300 hover:text-white flex items-center justify-center text-xs border border-zinc-700"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-zinc-700 rounded-lg cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-colors">
+              <svg className="w-5 h-5 text-zinc-500 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+              <span className="text-xs text-zinc-500">Click to upload image</span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
+              />
+            </label>
+          )}
+          {imageError && <p className="text-red-400 text-xs mt-1">{imageError}</p>}
+        </div>
+
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
-          <Button type="submit" disabled={submitting}>{submitting ? 'Logging...' : 'Log Action'}</Button>
+          <Button type="button" variant="secondary" onClick={handleClose}>Cancel</Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? (imageFile ? 'Uploading...' : 'Logging...') : 'Log Action'}
+          </Button>
         </div>
       </form>
     </Modal>

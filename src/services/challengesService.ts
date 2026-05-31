@@ -1,12 +1,13 @@
 import {
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc,
-  doc, serverTimestamp, increment,
+  doc, serverTimestamp, increment, limit,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import type { Challenge, ChallengeSubmission } from '../types'
 import { createFeedItem } from './feedService'
 import { incrementTopicCount } from './topicsService'
+import { uploadImage, submissionImagePath } from './storageService'
 
 function toChallenge(id: string, data: any): Challenge {
   return {
@@ -15,6 +16,14 @@ function toChallenge(id: string, data: any): Challenge {
     deadline: data.deadline?.toDate(),
     upvotes: data.upvotes ?? 0,
     flags: data.flags ?? 0,
+    createdAt: data.createdAt?.toDate() ?? new Date(),
+  }
+}
+
+function toSubmission(id: string, data: any): ChallengeSubmission {
+  return {
+    ...data,
+    id,
     createdAt: data.createdAt?.toDate() ?? new Date(),
   }
 }
@@ -28,6 +37,18 @@ export function subscribeChallenges(topicId: string, callback: (challenges: Chal
   )
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map(d => toChallenge(d.id, d.data())))
+  })
+}
+
+export function subscribeChallengeSubmissions(challengeId: string, callback: (submissions: ChallengeSubmission[]) => void): Unsubscribe {
+  const q = query(
+    collection(db, 'challenge_submissions'),
+    where('challengeId', '==', challengeId),
+    orderBy('createdAt', 'desc'),
+    limit(50),
+  )
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => toSubmission(d.id, d.data())))
   })
 }
 
@@ -62,11 +83,18 @@ export async function createChallenge(
 
 export async function submitChallengeAction(
   challengeId: string,
-  submission: Omit<ChallengeSubmission, 'id' | 'createdAt'>,
+  submission: Omit<ChallengeSubmission, 'id' | 'createdAt' | 'proofImageUrl'>,
+  imageFile?: File,
 ): Promise<void> {
+  let proofImageUrl: string | undefined
+  if (imageFile) {
+    proofImageUrl = await uploadImage(imageFile, submissionImagePath(challengeId, submission.userId, imageFile))
+  }
+
   await Promise.all([
     addDoc(collection(db, 'challenge_submissions'), {
       ...submission,
+      ...(proofImageUrl ? { proofImageUrl } : {}),
       createdAt: serverTimestamp(),
     }),
     updateDoc(doc(db, 'challenges', challengeId), {

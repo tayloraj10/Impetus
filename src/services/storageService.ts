@@ -22,3 +22,8 @@ export function groupLogoPath(file: File): string {
   const uid = `${Date.now()}-${Math.random().toString(36).slice(2)}`
   return `groups/logos/${uid}.${ext}`
 }
+
+export function submissionImagePath(challengeId: string, userId: string, file: File): string {
+  const ext = file.name.split('.').pop()
+  return `challenge_submissions/${challengeId}/${userId}-${Date.now()}.${ext}`
+}
