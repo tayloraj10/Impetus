@@ -90,8 +90,18 @@ function GroupCard({ group }: { group: Group }) {
         <GroupLogo group={group} />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="text-zinc-100 font-semibold text-sm leading-snug truncate">{group.name}</h3>
+            <div className="min-w-0">
+              <h3 className="text-zinc-100 font-semibold text-sm leading-snug truncate">{group.name}</h3>
+              {group.category && (
+                <span className="text-xs text-zinc-500">{group.category}</span>
+              )}
+            </div>
             <div className="flex items-center gap-1.5 shrink-0">
+              {group.moderationStatus === 'pending_review' && (
+                <Tooltip text="This group is visible but awaiting moderator review">
+                  <span className="text-xs text-amber-500/80 font-medium">Under Review</span>
+                </Tooltip>
+              )}
               <Tooltip text={liked ? 'Remove confirmation' : canLike ? 'Confirm this group is active' : 'Sign in to confirm'}>
                 <button
                   onClick={e => { e.stopPropagation(); toggle(() => likeGroup(group.id), () => unlikeGroup(group.id)) }}
@@ -113,7 +123,7 @@ function GroupCard({ group }: { group: Group }) {
           </div>
           {group.location && (
             <p className="text-zinc-500 text-xs mt-0.5">
-              {[group.location.city, group.location.state, group.location.country].filter(Boolean).join(', ')}
+              {[group.location.city, group.location.state, group.location.zipCode, group.location.country].filter(Boolean).join(', ')}
             </p>
           )}
         </div>
@@ -124,14 +134,28 @@ function GroupCard({ group }: { group: Group }) {
       {hasLinks && (
         <div className="flex flex-wrap gap-2">
           {group.links.website && <SocialLink href={group.links.website} label="Website" />}
-          {group.links.instagram && <SocialLink href={group.links.instagram} label="Instagram" />}
-          {group.links.facebook && <SocialLink href={group.links.facebook} label="Facebook" />}
-          {group.links.twitter && <SocialLink href={group.links.twitter} label="Twitter" />}
-          {group.links.youtube && <SocialLink href={group.links.youtube} label="YouTube" />}
+          {group.links.instagram && <SocialLink href={socialUrl('instagram', group.links.instagram)} label="Instagram" />}
+          {group.links.tiktok && <SocialLink href={socialUrl('tiktok', group.links.tiktok)} label="TikTok" />}
+          {group.links.youtube && <SocialLink href={socialUrl('youtube', group.links.youtube)} label="YouTube" />}
+          {group.links.facebook && <SocialLink href={socialUrl('facebook', group.links.facebook)} label="Facebook" />}
+          {group.links.twitter && <SocialLink href={socialUrl('twitter', group.links.twitter)} label="Twitter" />}
         </div>
       )}
     </div>
   )
+}
+
+function socialUrl(platform: string, handle: string): string {
+  if (handle.startsWith('http')) return handle
+  const h = handle.replace(/^@/, '')
+  switch (platform) {
+    case 'instagram': return `https://instagram.com/${h}`
+    case 'tiktok': return `https://tiktok.com/@${h}`
+    case 'youtube': return `https://youtube.com/@${h}`
+    case 'facebook': return `https://facebook.com/${h}`
+    case 'twitter': return `https://twitter.com/${h}`
+    default: return handle
+  }
 }
 
 function SocialLink({ href, label }: { href: string; label: string }) {
@@ -157,14 +181,26 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   )
 }
 
+const GROUP_CATEGORIES = [
+  'Nonprofit',
+  'Grassroots / Community',
+  'Government Agency',
+  'Corporate / Business',
+  'Faith-based',
+  'Online Community',
+  'University / Research',
+  'Other',
+]
+
 function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () => void; topic: Topic }) {
   const { user } = useAuth()
   const [form, setForm] = useState<CreateGroupInput>({
     topicId: topic.id,
     name: '',
     description: '',
-    location: { city: '', state: '', country: '' },
-    links: { website: '', instagram: '', facebook: '', twitter: '' },
+    category: '',
+    location: { city: '', state: '', zipCode: '', country: '' },
+    links: { website: '', instagram: '', tiktok: '', youtube: '', facebook: '', twitter: '' },
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -211,12 +247,12 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
 
   if (done) {
     return (
-      <Modal open={open} onClose={() => { onClose(); setDone(false) }} title="Group Submitted">
+      <Modal open={open} onClose={() => { onClose(); setDone(false) }} title="Group Added">
         <div className="text-center py-4">
           <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3">
             <span className="text-emerald-400 text-sm font-bold">✓</span>
           </div>
-          <p className="text-zinc-300 text-sm">Your group has been submitted for review. It will appear once a moderator approves it.</p>
+          <p className="text-zinc-300 text-sm">Your group is now live and visible. A moderator will review it shortly — it may be removed if it doesn't meet our guidelines.</p>
           <Button className="mt-4" onClick={() => { onClose(); setDone(false) }}>Done</Button>
         </div>
       </Modal>
@@ -227,10 +263,16 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
     <Modal open={open} onClose={onClose} title="Add a Group">
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label="Group Name *">
-          <input required value={form.name} onChange={e => set('name', e.target.value)} placeholder="World Cleanup Day" />
+          <input required value={form.name} onChange={e => set('name', e.target.value)} placeholder="What's the group called?" />
         </Field>
         <Field label="Description *">
           <textarea required rows={3} value={form.description} onChange={e => set('description', e.target.value)} placeholder="What does this group do?" />
+        </Field>
+        <Field label="Category">
+          <select value={form.category ?? ''} onChange={e => set('category', e.target.value)}>
+            <option value="">Select a category...</option>
+            {GROUP_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </Field>
 
         <div>
@@ -259,32 +301,48 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <Field label="City">
-            <input value={form.location?.city ?? ''} onChange={e => setLoc('city', e.target.value)} placeholder="Boston" />
+            <input value={form.location?.city ?? ''} onChange={e => setLoc('city', e.target.value)} />
           </Field>
-          <Field label="State">
-            <input value={form.location?.state ?? ''} onChange={e => setLoc('state', e.target.value)} placeholder="MA" />
+          <Field label="State / Province">
+            <input value={form.location?.state ?? ''} onChange={e => setLoc('state', e.target.value)} />
+          </Field>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Field label="Zip / Postal Code">
+            <input value={form.location?.zipCode ?? ''} onChange={e => setLoc('zipCode', e.target.value)} />
           </Field>
           <Field label="Country">
-            <input value={form.location?.country ?? ''} onChange={e => setLoc('country', e.target.value)} placeholder="USA" />
+            <input value={form.location?.country ?? ''} onChange={e => setLoc('country', e.target.value)} />
           </Field>
         </div>
-        <Field label="Website">
-          <input type="url" value={form.links?.website ?? ''} onChange={e => setLink('website', e.target.value)} placeholder="https://..." />
-        </Field>
+
         <div className="grid grid-cols-2 gap-2">
+          <Field label="Website">
+            <input type="url" value={form.links?.website ?? ''} onChange={e => setLink('website', e.target.value)} placeholder="https://..." />
+          </Field>
           <Field label="Instagram">
-            <input value={form.links?.instagram ?? ''} onChange={e => setLink('instagram', e.target.value)} placeholder="https://instagram.com/..." />
+            <input value={form.links?.instagram ?? ''} onChange={e => setLink('instagram', e.target.value.replace(/^@/, ''))} placeholder="username" />
+          </Field>
+          <Field label="TikTok">
+            <input value={form.links?.tiktok ?? ''} onChange={e => setLink('tiktok', e.target.value.replace(/^@/, ''))} placeholder="username" />
+          </Field>
+          <Field label="YouTube">
+            <input value={form.links?.youtube ?? ''} onChange={e => setLink('youtube', e.target.value.replace(/^@/, ''))} placeholder="username" />
           </Field>
           <Field label="Facebook">
-            <input value={form.links?.facebook ?? ''} onChange={e => setLink('facebook', e.target.value)} placeholder="https://facebook.com/..." />
+            <input value={form.links?.facebook ?? ''} onChange={e => setLink('facebook', e.target.value.replace(/^@/, ''))} placeholder="username" />
+          </Field>
+          <Field label="Twitter">
+            <input value={form.links?.twitter ?? ''} onChange={e => setLink('twitter', e.target.value.replace(/^@/, ''))} placeholder="username" />
           </Field>
         </div>
+
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="submit" disabled={submitting}>
-            {submitting ? 'Submitting...' : 'Submit Group'}
+            {submitting ? 'Submitting...' : 'Add Group'}
           </Button>
         </div>
       </form>

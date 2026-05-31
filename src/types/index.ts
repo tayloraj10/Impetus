@@ -43,18 +43,21 @@ export interface Group {
   topicId: string
   name: string
   description: string
+  category?: string
   imageUrl?: string
   location?: {
     city?: string
     state?: string
+    zipCode?: string
     country?: string
   }
   links: {
     website?: string
     instagram?: string
+    tiktok?: string
+    youtube?: string
     facebook?: string
     twitter?: string
-    youtube?: string
   }
   moderationStatus: ModerationStatus
   submittedBy: string
@@ -150,6 +153,7 @@ export interface CreateGroupInput {
   topicId: string
   name: string
   description: string
+  category?: string
   imageUrl?: string
   location?: Group['location']
   links?: Group['links']

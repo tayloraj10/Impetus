@@ -1,5 +1,5 @@
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc,
+  collection, query, where, onSnapshot, addDoc, updateDoc,
   doc, serverTimestamp, increment,
   type Unsubscribe,
 } from 'firebase/firestore'
@@ -22,11 +22,12 @@ function toGroup(id: string, data: any): Group {
 export function subscribeAllGroups(callback: (groups: Group[]) => void): Unsubscribe {
   const q = query(
     collection(db, 'groups'),
-    where('moderationStatus', '==', 'live'),
-    orderBy('createdAt', 'desc'),
+    where('moderationStatus', 'in', ['live', 'pending_review']),
   )
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => toGroup(d.id, d.data())))
+    const groups = snap.docs.map(d => toGroup(d.id, d.data()))
+    groups.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+    callback(groups)
   })
 }
 
@@ -34,11 +35,12 @@ export function subscribeGroups(topicId: string, callback: (groups: Group[]) => 
   const q = query(
     collection(db, 'groups'),
     where('topicId', '==', topicId),
-    where('moderationStatus', '==', 'live'),
-    orderBy('likes', 'desc'),
+    where('moderationStatus', 'in', ['live', 'pending_review']),
   )
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => toGroup(d.id, d.data())))
+    const groups = snap.docs.map(d => toGroup(d.id, d.data()))
+    groups.sort((a, b) => b.likes - a.likes)
+    callback(groups)
   })
 }
 
