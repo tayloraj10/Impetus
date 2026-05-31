@@ -9,7 +9,6 @@ export interface Topic {
   title: string
   slug: string
   description: string
-  coverEmoji?: string
   tags: string[]
   enabledComponents: ComponentType[]
   status: 'active' | 'pending' | 'archived'

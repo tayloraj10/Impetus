@@ -79,7 +79,7 @@ function ResourceRow({ resource }: { resource: Resource }) {
         onClick={() => likeResource(resource.id)}
         className="flex items-center gap-1 text-zinc-500 hover:text-emerald-400 transition-colors text-xs cursor-pointer shrink-0 pt-1"
       >
-        ♥ {resource.likes}
+        ↑ {resource.likes}
       </button>
     </div>
   )
@@ -126,7 +126,7 @@ function AddResourceModal({ open, onClose, topic }: { open: boolean; onClose: ()
     return (
       <Modal open={open} onClose={() => { onClose(); setDone(false) }} title="Resource Submitted">
         <div className="text-center py-4">
-          <div className="text-4xl mb-3">✓</div>
+          <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3"><span className="text-emerald-400 text-sm font-bold">✓</span></div>
           <p className="text-zinc-300 text-sm">Submitted for review. It will appear once approved.</p>
           <Button className="mt-4" onClick={() => { onClose(); setDone(false) }}>Done</Button>
         </div>

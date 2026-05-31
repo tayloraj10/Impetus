@@ -74,8 +74,7 @@ export function TopicPage() {
 function TopicHeader({ topic }: { topic: Topic }) {
   return (
     <div className="mb-6">
-      <div className="flex items-center gap-3 mb-2">
-        <span className="text-4xl">{topic.coverEmoji ?? '🌍'}</span>
+      <div className="mb-2">
         <h1 className="text-3xl font-bold text-zinc-100 tracking-tight">{topic.title}</h1>
       </div>
       <p className="text-zinc-400 text-lg leading-relaxed max-w-2xl mb-4">{topic.description}</p>

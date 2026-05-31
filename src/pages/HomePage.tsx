@@ -110,7 +110,6 @@ function TopicFilter({ label, count, active, onClick }: { label: string; count: 
 function EmptyFeed({ hasTopics }: { hasTopics: boolean }) {
   return (
     <div className="text-center py-16 border border-dashed border-zinc-800 rounded-2xl">
-      <div className="text-4xl mb-4">⚡</div>
       <h2 className="text-zinc-300 font-semibold mb-2">
         {hasTopics ? 'Nothing here yet' : 'No content yet'}
       </h2>

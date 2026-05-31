@@ -18,7 +18,7 @@ export function TopicsPage() {
         <div className="flex justify-center py-16"><Spinner size="lg" /></div>
       ) : topics.length === 0 ? (
         <div className="text-center py-16 border border-dashed border-zinc-800 rounded-2xl">
-          <p className="text-zinc-500">No topics yet. Topics are added by admins — check back soon.</p>
+          <p className="text-zinc-500">No topics yet. Check back soon.</p>
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -37,15 +37,10 @@ function TopicCard({ topic }: { topic: Topic }) {
       to={`/topic/${topic.slug}`}
       className="block bg-zinc-900 hover:bg-zinc-800/60 border border-zinc-800 hover:border-zinc-700 rounded-xl p-5 transition-all duration-200 group hover:-translate-y-px hover:shadow-xl hover:shadow-black/30"
     >
-      <div className="flex items-start gap-3 mb-3">
-        <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-zinc-800 text-2xl shrink-0 group-hover:bg-zinc-700/80 transition-colors">
-          {topic.coverEmoji ?? '🌍'}
-        </div>
-        <div className="flex-1 min-w-0 pt-0.5">
-          <h2 className="text-zinc-100 font-semibold group-hover:text-emerald-400 transition-colors leading-snug">
-            {topic.title}
-          </h2>
-        </div>
+      <div className="mb-3">
+        <h2 className="text-zinc-100 font-semibold group-hover:text-emerald-400 transition-colors leading-snug">
+          {topic.title}
+        </h2>
       </div>
 
       <p className="text-zinc-400 text-sm leading-relaxed line-clamp-2 mb-4">{topic.description}</p>

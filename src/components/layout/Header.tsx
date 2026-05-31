@@ -11,7 +11,7 @@ export function Header() {
     <header className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-2.5 group">
-          <span className="w-7 h-7 flex items-center justify-center rounded-md bg-emerald-500/10 text-emerald-400 text-base group-hover:bg-emerald-500/20 transition-colors">⚡</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 group-hover:bg-emerald-400 transition-colors mt-px shrink-0"></span>
           <span className="text-zinc-100 font-bold tracking-widest uppercase text-sm group-hover:text-emerald-400 transition-colors">Impetus</span>
         </Link>
 

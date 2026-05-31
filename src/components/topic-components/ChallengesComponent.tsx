@@ -75,8 +75,8 @@ function ChallengeCard({ challenge, ended = false }: { challenge: Challenge; end
           )}
 
           <div className="flex items-center gap-4 mt-3 text-xs text-zinc-500">
-            <span>👥 {challenge.participantCount} participants</span>
-            {challenge.deadline && <span>⏱ Ends {formatDate(challenge.deadline)}</span>}
+            <span>{challenge.participantCount} participants</span>
+            {challenge.deadline && <span>Ends {formatDate(challenge.deadline)}</span>}
           </div>
         </div>
       </div>
@@ -124,7 +124,7 @@ function SubmitActionModal({ open, onClose, challenge }: { open: boolean; onClos
     return (
       <Modal open={open} onClose={() => { onClose(); setDone(false) }} title="Action Logged!">
         <div className="text-center py-4">
-          <div className="text-4xl mb-3">🎉</div>
+          <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3"><span className="text-emerald-400 text-sm font-bold">✓</span></div>
           <p className="text-zinc-300 text-sm">Your action has been logged. Thanks for making a difference!</p>
           <Button className="mt-4" onClick={() => { onClose(); setDone(false) }}>Done</Button>
         </div>
