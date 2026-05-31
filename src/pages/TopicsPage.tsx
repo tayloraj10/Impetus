@@ -35,11 +35,13 @@ function TopicCard({ topic }: { topic: Topic }) {
   return (
     <Link
       to={`/topic/${topic.slug}`}
-      className="block bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 hover:border-zinc-700 rounded-xl p-5 transition-all group"
+      className="block bg-zinc-900 hover:bg-zinc-800/60 border border-zinc-800 hover:border-zinc-700 rounded-xl p-5 transition-all duration-200 group hover:-translate-y-px hover:shadow-xl hover:shadow-black/30"
     >
       <div className="flex items-start gap-3 mb-3">
-        <span className="text-2xl">{topic.coverEmoji ?? '🌍'}</span>
-        <div className="flex-1 min-w-0">
+        <div className="w-11 h-11 flex items-center justify-center rounded-xl bg-zinc-800 text-2xl shrink-0 group-hover:bg-zinc-700/80 transition-colors">
+          {topic.coverEmoji ?? '🌍'}
+        </div>
+        <div className="flex-1 min-w-0 pt-0.5">
           <h2 className="text-zinc-100 font-semibold group-hover:text-emerald-400 transition-colors leading-snug">
             {topic.title}
           </h2>
@@ -52,10 +54,13 @@ function TopicCard({ topic }: { topic: Topic }) {
         {topic.tags.map(tag => <Badge key={tag}>{tag}</Badge>)}
       </div>
 
-      <div className="flex items-center gap-4 text-xs text-zinc-500 pt-3 border-t border-zinc-800">
+      <div className="flex items-center gap-1.5 text-xs text-zinc-500 pt-3 border-t border-zinc-800">
         {topic.groupCount > 0 && <span>{topic.groupCount} groups</span>}
+        {topic.groupCount > 0 && topic.resourceCount > 0 && <span className="text-zinc-700">·</span>}
         {topic.resourceCount > 0 && <span>{topic.resourceCount} resources</span>}
+        {(topic.groupCount > 0 || topic.resourceCount > 0) && topic.eventCount > 0 && <span className="text-zinc-700">·</span>}
         {topic.eventCount > 0 && <span>{topic.eventCount} events</span>}
+        {(topic.groupCount > 0 || topic.resourceCount > 0 || topic.eventCount > 0) && topic.challengeCount > 0 && <span className="text-zinc-700">·</span>}
         {topic.challengeCount > 0 && <span>{topic.challengeCount} challenges</span>}
         {total === 0 && <span>No content yet</span>}
       </div>

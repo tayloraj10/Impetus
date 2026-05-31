@@ -20,11 +20,14 @@ export function HomePage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-zinc-100 tracking-tight">
-          Engine of <span className="text-emerald-400">change.</span>
+      <div className="mb-10">
+        <h1 className="text-4xl sm:text-5xl font-bold text-zinc-100 tracking-tight leading-tight">
+          Engine of{' '}
+          <span className="bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent">
+            change.
+          </span>
         </h1>
-        <p className="text-zinc-400 mt-2 text-lg">
+        <p className="text-zinc-400 mt-3 text-lg leading-relaxed">
           Discover initiatives, find your people, take action.
         </p>
       </div>
@@ -59,10 +62,10 @@ export function HomePage() {
                 <button
                   key={type}
                   onClick={() => setTypeFilter(type)}
-                  className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-colors cursor-pointer ${
+                  className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-all cursor-pointer border-l-2 ${
                     typeFilter === type
-                      ? 'bg-zinc-800 text-zinc-100'
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
+                      ? 'bg-zinc-800/80 text-zinc-100 border-l-emerald-500'
+                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/40 border-l-transparent'
                   }`}
                 >
                   {type === 'all' ? 'All types' : type.charAt(0).toUpperCase() + type.slice(1) + 's'}
@@ -92,12 +95,14 @@ function TopicFilter({ label, count, active, onClick }: { label: string; count: 
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-sm transition-colors cursor-pointer ${
-        active ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/50'
+      className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-sm transition-all cursor-pointer border-l-2 ${
+        active
+          ? 'bg-zinc-800/80 text-zinc-100 border-l-emerald-500'
+          : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/40 border-l-transparent'
       }`}
     >
       <span className="truncate">{label}</span>
-      <span className="text-xs text-zinc-600 ml-2 shrink-0">{count}</span>
+      <span className={`text-xs ml-2 shrink-0 ${active ? 'text-zinc-400' : 'text-zinc-700'}`}>{count}</span>
     </button>
   )
 }

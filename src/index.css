@@ -9,6 +9,10 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+body {
+  background-image: radial-gradient(ellipse at 50% 0%, oklch(0.22 0.02 168 / 0.3) 0%, transparent 60%);
+}
+
 ::selection {
   background: theme(colors.emerald.500 / 30%);
   color: theme(colors.emerald.100);

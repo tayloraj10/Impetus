@@ -10,9 +10,9 @@ export function Header() {
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-2 group">
-          <span className="text-emerald-400 text-xl">⚡</span>
-          <span className="text-zinc-100 font-bold tracking-widest uppercase text-sm">Impetus</span>
+        <Link to="/" className="flex items-center gap-2.5 group">
+          <span className="w-7 h-7 flex items-center justify-center rounded-md bg-emerald-500/10 text-emerald-400 text-base group-hover:bg-emerald-500/20 transition-colors">⚡</span>
+          <span className="text-zinc-100 font-bold tracking-widest uppercase text-sm group-hover:text-emerald-400 transition-colors">Impetus</span>
         </Link>
 
         <nav className="hidden sm:flex items-center gap-1">
@@ -49,8 +49,10 @@ function NavLink({ to, active, children }: { to: string; active: boolean; childr
   return (
     <Link
       to={to}
-      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-        active ? 'text-zinc-100 bg-zinc-800' : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/50'
+      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${
+        active
+          ? 'text-zinc-100 bg-zinc-800 shadow-sm'
+          : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
       }`}
     >
       {children}

@@ -49,15 +49,15 @@ export function TopicPage() {
       <StatsBar topic={topic} />
 
       <div className="mt-6">
-        <div className="flex gap-1 border-b border-zinc-800 mb-6">
+        <div className="flex gap-0.5 border-b border-zinc-800 mb-6">
           {topic.enabledComponents.map(comp => (
             <button
               key={comp}
               onClick={() => setActiveTab(comp)}
-              className={`px-4 py-2.5 text-sm font-medium transition-colors cursor-pointer -mb-px border-b-2 ${
+              className={`px-4 py-2.5 text-sm font-medium transition-all cursor-pointer -mb-px border-b-2 rounded-t-md ${
                 currentTab === comp
-                  ? 'text-emerald-400 border-emerald-400'
-                  : 'text-zinc-500 border-transparent hover:text-zinc-300'
+                  ? 'text-emerald-400 border-emerald-400 bg-emerald-500/5'
+                  : 'text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-zinc-800/50'
               }`}
             >
               {componentLabels[comp]}
@@ -95,11 +95,11 @@ function StatsBar({ topic }: { topic: Topic }) {
   ].filter(s => s.show)
 
   return (
-    <div className="flex flex-wrap gap-6 py-4 border-y border-zinc-800">
+    <div className="flex flex-wrap gap-8 py-5 border-y border-zinc-800">
       {stats.map(s => (
-        <div key={s.label}>
-          <span className="text-xl font-bold text-zinc-100">{s.value}</span>
-          <span className="text-zinc-500 text-sm ml-1.5">{s.label}</span>
+        <div key={s.label} className="flex flex-col gap-0.5">
+          <span className="text-2xl font-bold text-zinc-100 leading-none">{s.value}</span>
+          <span className="text-zinc-500 text-xs uppercase tracking-wider">{s.label}</span>
         </div>
       ))}
     </div>
