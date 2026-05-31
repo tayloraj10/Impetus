@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react'
 import type { Resource, CreateResourceInput, Topic } from '../../types'
-import { subscribeResources, createResource, likeResource } from '../../services/resourcesService'
+import { subscribeResources, createResource, likeResource, unlikeResource } from '../../services/resourcesService'
 import { useAuth } from '../../hooks/useAuth'
+import { useLiked } from '../../hooks/useLiked'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
+import { LikeButton } from '../ui/LikeButton'
 import { Modal } from '../ui/Modal'
 import { Spinner } from '../ui/Spinner'
 
@@ -53,6 +55,8 @@ export function ResourcesComponent({ topic }: { topic: Topic }) {
 }
 
 function ResourceRow({ resource }: { resource: Resource }) {
+  const { liked, toggle, canLike } = useLiked(resource.id)
+
   return (
     <div className="flex items-start gap-3 bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors group">
       <div className="flex-1 min-w-0">
@@ -75,12 +79,13 @@ function ResourceRow({ resource }: { resource: Resource }) {
           <p className="text-zinc-600 text-xs mt-2">Added by {resource.submittedByDisplayName}</p>
         )}
       </div>
-      <button
-        onClick={() => likeResource(resource.id)}
-        className="flex items-center gap-1 text-zinc-500 hover:text-emerald-400 transition-colors text-xs cursor-pointer shrink-0 pt-1"
-      >
-        ↑ {resource.likes}
-      </button>
+      <LikeButton
+        count={resource.likes}
+        liked={liked}
+        onToggle={() => toggle(() => likeResource(resource.id), () => unlikeResource(resource.id))}
+        canLike={canLike}
+        className="pt-1"
+      />
     </div>
   )
 }

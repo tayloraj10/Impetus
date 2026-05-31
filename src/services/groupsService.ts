@@ -69,6 +69,10 @@ export async function likeGroup(groupId: string) {
   await updateDoc(doc(db, 'groups', groupId), { likes: increment(1) })
 }
 
+export async function unlikeGroup(groupId: string) {
+  await updateDoc(doc(db, 'groups', groupId), { likes: increment(-1) })
+}
+
 export async function flagGroup(groupId: string) {
   await updateDoc(doc(db, 'groups', groupId), { flags: increment(1) })
 }

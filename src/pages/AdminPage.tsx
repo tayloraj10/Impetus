@@ -3,6 +3,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useTopics } from '../hooks/useTopics'
 import { createTopic } from '../services/topicsService'
 import { uploadImage, topicImagePath } from '../services/storageService'
+import { seedAllTopics } from '../services/seedService'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { Badge } from '../components/ui/Badge'
@@ -30,6 +31,8 @@ export function AdminPage() {
         <Button onClick={() => setCreateOpen(true)}>+ New Topic</Button>
       </div>
 
+      <SeedPanel />
+
       <section>
         <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-4">Topics ({topics.length})</h2>
         <div className="space-y-2">
@@ -52,6 +55,47 @@ export function AdminPage() {
 
       <CreateTopicModal open={createOpen} onClose={() => setCreateOpen(false)} />
     </div>
+  )
+}
+
+function SeedPanel() {
+  const { user } = useAuth()
+  const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle')
+  const [error, setError] = useState('')
+
+  async function handleSeed() {
+    if (!user) return
+    if (!confirm('Seed all 5 topics with demo data? This will wipe and re-populate existing seed content.')) return
+    setStatus('running')
+    try {
+      await seedAllTopics(user.uid, user.displayName ?? 'Admin')
+      setStatus('done')
+    } catch (e: any) {
+      setError(e.message ?? 'Unknown error')
+      setStatus('error')
+    }
+  }
+
+  return (
+    <section className="mb-8 p-4 border border-dashed border-zinc-700 rounded-xl bg-zinc-900/40">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-zinc-300 text-sm font-medium">Demo Seed</p>
+          <p className="text-zinc-500 text-xs mt-0.5">
+            Populates all 5 topics with realistic data and staggered timestamps for feed testing. Safe to re-run — wipes existing seed data first.
+          </p>
+          {status === 'done' && <p className="text-emerald-400 text-xs mt-1">All topics seeded successfully.</p>}
+          {status === 'error' && <p className="text-red-400 text-xs mt-1">Error: {error}</p>}
+        </div>
+        <Button
+          variant="secondary"
+          onClick={handleSeed}
+          disabled={status === 'running' || status === 'done'}
+        >
+          {status === 'running' ? 'Seeding…' : status === 'done' ? 'Done' : 'Seed All Topics'}
+        </Button>
+      </div>
+    </section>
   )
 }
 

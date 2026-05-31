@@ -1,22 +1,29 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { useFeed } from '../hooks/useFeed'
-import { useTopics } from '../hooks/useTopics'
-import { FeedCard } from '../components/feed/FeedCard'
+import { useTopicFeed } from '../hooks/useTopicFeed'
+import { TopicActivityCard } from '../components/feed/TopicActivityCard'
 import { Spinner } from '../components/ui/Spinner'
 import type { FeedItem } from '../types'
 
-export function HomePage() {
-  const { items, loading: feedLoading } = useFeed()
-  const { topics, loading: topicsLoading } = useTopics()
-  const [selectedTopic, setSelectedTopic] = useState<string | null>(null)
-  const [typeFilter, setTypeFilter] = useState<FeedItem['type'] | 'all'>('all')
+type TypeFilter = FeedItem['type'] | 'all'
 
-  const filtered = items.filter(item => {
-    if (selectedTopic && item.topicId !== selectedTopic) return false
-    if (typeFilter !== 'all' && item.type !== typeFilter) return false
-    return true
-  })
+export function HomePage() {
+  const { topics, feedItems, loading } = useTopicFeed()
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all')
+
+  const topicEntries = topics
+    .filter(topic => !selectedTopicId || topic.id === selectedTopicId)
+    .map(topic => {
+      const allForTopic = feedItems
+        .filter(item => item.topicId === topic.id)
+        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+      const filtered = typeFilter === 'all'
+        ? allForTopic
+        : allForTopic.filter(item => item.type === typeFilter)
+      return { topic, items: filtered.slice(0, 3), totalCount: filtered.length }
+    })
+    .filter(entry => typeFilter === 'all' || entry.totalCount > 0)
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
@@ -37,26 +44,26 @@ export function HomePage() {
           <div className="sticky top-20">
             <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Topics</p>
             <div className="space-y-1">
-              <TopicFilter
+              <FilterButton
                 label="All Topics"
-                count={items.length}
-                active={selectedTopic === null}
-                onClick={() => setSelectedTopic(null)}
+                count={topics.length}
+                active={selectedTopicId === null}
+                onClick={() => setSelectedTopicId(null)}
               />
-              {topicsLoading ? (
+              {loading ? (
                 <div className="py-2"><Spinner size="sm" /></div>
               ) : topics.map(t => (
-                <TopicFilter
+                <FilterButton
                   key={t.id}
                   label={t.title}
-                  count={items.filter(i => i.topicId === t.id).length}
-                  active={selectedTopic === t.id}
-                  onClick={() => setSelectedTopic(selectedTopic === t.id ? null : t.id)}
+                  count={feedItems.filter(i => i.topicId === t.id).length}
+                  active={selectedTopicId === t.id}
+                  onClick={() => setSelectedTopicId(selectedTopicId === t.id ? null : t.id)}
                 />
               ))}
             </div>
 
-            <p className="text-xs text-zinc-500 uppercase tracking-wider mt-6 mb-3">Type</p>
+            <p className="text-xs text-zinc-500 uppercase tracking-wider mt-6 mb-3">Activity Type</p>
             <div className="space-y-1">
               {(['all', 'group', 'resource', 'event', 'challenge'] as const).map(type => (
                 <button
@@ -68,7 +75,7 @@ export function HomePage() {
                       : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/40 border-l-transparent'
                   }`}
                 >
-                  {type === 'all' ? 'All types' : type.charAt(0).toUpperCase() + type.slice(1) + 's'}
+                  {type === 'all' ? 'All activity' : type.charAt(0).toUpperCase() + type.slice(1) + 's'}
                 </button>
               ))}
             </div>
@@ -76,13 +83,20 @@ export function HomePage() {
         </aside>
 
         <main className="flex-1 min-w-0">
-          {feedLoading ? (
+          {loading ? (
             <div className="flex justify-center py-16"><Spinner size="lg" /></div>
-          ) : filtered.length === 0 ? (
-            <EmptyFeed hasTopics={topics.length > 0} />
+          ) : topicEntries.length === 0 ? (
+            <EmptyFeed selectedTopicId={selectedTopicId} typeFilter={typeFilter} />
           ) : (
             <div className="space-y-3">
-              {filtered.map(item => <FeedCard key={item.id} item={item} />)}
+              {topicEntries.map(({ topic, items, totalCount }) => (
+                <TopicActivityCard
+                  key={topic.id}
+                  topic={topic}
+                  items={items}
+                  totalCount={totalCount}
+                />
+              ))}
             </div>
           )}
         </main>
@@ -91,7 +105,9 @@ export function HomePage() {
   )
 }
 
-function TopicFilter({ label, count, active, onClick }: { label: string; count: number; active: boolean; onClick: () => void }) {
+function FilterButton({ label, count, active, onClick }: {
+  label: string; count: number; active: boolean; onClick: () => void
+}) {
   return (
     <button
       onClick={onClick}
@@ -107,18 +123,19 @@ function TopicFilter({ label, count, active, onClick }: { label: string; count: 
   )
 }
 
-function EmptyFeed({ hasTopics }: { hasTopics: boolean }) {
+function EmptyFeed({ selectedTopicId, typeFilter }: { selectedTopicId: string | null; typeFilter: TypeFilter }) {
+  const filtered = selectedTopicId || typeFilter !== 'all'
   return (
     <div className="text-center py-16 border border-dashed border-zinc-800 rounded-2xl">
       <h2 className="text-zinc-300 font-semibold mb-2">
-        {hasTopics ? 'Nothing here yet' : 'No content yet'}
+        {filtered ? 'No matching activity' : 'No topics yet'}
       </h2>
       <p className="text-zinc-500 text-sm max-w-sm mx-auto">
-        {hasTopics
-          ? 'No items match your filters. Try selecting a different topic or type.'
-          : 'Topics and content will appear here as they\'re added. Check back soon.'}
+        {filtered
+          ? 'Try clearing your filters to see all topic activity.'
+          : 'Topics will appear here as they\'re created and populated.'}
       </p>
-      {!hasTopics && (
+      {!filtered && (
         <Link to="/topics" className="inline-flex items-center gap-1 mt-4 text-emerald-400 text-sm hover:text-emerald-300 transition-colors">
           Browse Topics →
         </Link>

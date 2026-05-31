@@ -67,6 +67,10 @@ export async function likeResource(resourceId: string) {
   await updateDoc(doc(db, 'resources', resourceId), { likes: increment(1) })
 }
 
+export async function unlikeResource(resourceId: string) {
+  await updateDoc(doc(db, 'resources', resourceId), { likes: increment(-1) })
+}
+
 export async function flagResource(resourceId: string) {
   await updateDoc(doc(db, 'resources', resourceId), { flags: increment(1) })
 }

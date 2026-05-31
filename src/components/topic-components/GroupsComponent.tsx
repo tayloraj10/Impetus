@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { Group, CreateGroupInput, Topic } from '../../types'
-import { subscribeGroups, createGroup, likeGroup } from '../../services/groupsService'
+import { subscribeGroups, createGroup, likeGroup, unlikeGroup } from '../../services/groupsService'
 import { useAuth } from '../../hooks/useAuth'
+import { useLiked } from '../../hooks/useLiked'
 import { Button } from '../ui/Button'
+import { LikeButton } from '../ui/LikeButton'
 import { Modal } from '../ui/Modal'
 import { Spinner } from '../ui/Spinner'
 
@@ -50,17 +52,18 @@ export function GroupsComponent({ topic }: { topic: Topic }) {
 
 function GroupCard({ group }: { group: Group }) {
   const hasLinks = Object.values(group.links ?? {}).some(Boolean)
+  const { liked, toggle, canLike } = useLiked(group.id)
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors">
       <div className="flex items-start justify-between gap-2 mb-2">
         <h3 className="text-zinc-100 font-semibold text-sm">{group.name}</h3>
-        <button
-          onClick={() => likeGroup(group.id)}
-          className="flex items-center gap-1 text-zinc-500 hover:text-emerald-400 transition-colors text-xs cursor-pointer shrink-0"
-        >
-          ↑ {group.likes}
-        </button>
+        <LikeButton
+          count={group.likes}
+          liked={liked}
+          onToggle={() => toggle(() => likeGroup(group.id), () => unlikeGroup(group.id))}
+          canLike={canLike}
+        />
       </div>
 
       <p className="text-zinc-400 text-sm leading-relaxed mb-3 line-clamp-3">{group.description}</p>

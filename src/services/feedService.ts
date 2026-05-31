@@ -1,5 +1,6 @@
 import {
-  collection, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp,
+  collection, query, orderBy, limit, onSnapshot, addDoc, updateDoc, doc,
+  serverTimestamp, increment,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
@@ -34,6 +35,28 @@ function hotScore(item: FeedItem): number {
   const ageHours = (Date.now() - item.createdAt.getTime()) / 3_600_000
   const recency = Math.max(0, 48 - ageHours) * 2
   return item.likes * 3 + recency
+}
+
+export function subscribeRecentFeed(callback: (items: FeedItem[]) => void): Unsubscribe {
+  const q = query(
+    collection(db, 'feed'),
+    orderBy('createdAt', 'desc'),
+    limit(100),
+  )
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => toFeedItem(d.id, d.data())))
+  }, (err) => {
+    console.error('subscribeRecentFeed error:', err)
+    callback([])
+  })
+}
+
+export async function likeFeedItem(feedId: string) {
+  await updateDoc(doc(db, 'feed', feedId), { likes: increment(1) })
+}
+
+export async function unlikeFeedItem(feedId: string) {
+  await updateDoc(doc(db, 'feed', feedId), { likes: increment(-1) })
 }
 
 export async function createFeedItem(data: Omit<FeedItem, 'id' | 'createdAt'>) {

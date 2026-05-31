@@ -1,5 +1,5 @@
 import {
-  collection, doc, query, where, orderBy, onSnapshot,
+  collection, doc, query, where, orderBy, limit, onSnapshot,
   addDoc, updateDoc, serverTimestamp, increment,
   type Unsubscribe,
 } from 'firebase/firestore'
@@ -14,6 +14,21 @@ function toTopic(id: string, data: any): Topic {
     updatedAt: data.updatedAt?.toDate() ?? new Date(),
     lastActivityAt: data.lastActivityAt?.toDate() ?? new Date(),
   }
+}
+
+export function subscribeTopicsByActivity(callback: (topics: Topic[]) => void): Unsubscribe {
+  const q = query(
+    collection(db, 'topics'),
+    where('status', '==', 'active'),
+    orderBy('lastActivityAt', 'desc'),
+    limit(30),
+  )
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => toTopic(d.id, d.data())))
+  }, (err) => {
+    console.error('subscribeTopicsByActivity error:', err)
+    callback([])
+  })
 }
 
 export function subscribeTopics(callback: (topics: Topic[]) => void): Unsubscribe {
