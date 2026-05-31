@@ -1,9 +1,17 @@
 import React, { useEffect, useState } from 'react'
 import type { ImpetusEvent, CreateEventInput, Topic } from '../../types'
-import { subscribeEvents, createEvent } from '../../services/eventsService'
+import {
+  subscribeEvents, createEvent,
+  interestedEvent, uninterestedEvent,
+  goingEvent, ungoingEvent,
+  flagEvent, unflagEvent,
+} from '../../services/eventsService'
 import { useAuth } from '../../hooks/useAuth'
+import { useLiked, useFlag } from '../../hooks/useLiked'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
+import { FlagButton } from '../ui/FlagButton'
+import { Tooltip } from '../ui/Tooltip'
 import { Modal } from '../ui/Modal'
 import { Spinner } from '../ui/Spinner'
 
@@ -53,36 +61,107 @@ export function EventsComponent({ topic }: { topic: Topic }) {
   )
 }
 
-function EventCard({ event, past = false }: { event: ImpetusEvent; past?: boolean }) {
+function StarIcon({ filled }: { filled: boolean }) {
   return (
-    <a
-      href={event.externalUrl}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={`flex items-start gap-4 border rounded-xl p-4 transition-colors group ${
-        past ? 'bg-zinc-900/50 border-zinc-800/50 opacity-60' : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
-      }`}
-    >
-      <div className="text-center shrink-0 w-12">
-        <div className="text-emerald-400 font-bold text-lg leading-none">
-          {event.date.getDate()}
+    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 0 0 .95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 0 0-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 0 0-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 0 0-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 0 0 .951-.69l1.07-3.292z" />
+    </svg>
+  )
+}
+
+function CheckCircleIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="10" cy="10" r="8" />
+      <path d="m7 10 2 2 4-4" />
+    </svg>
+  )
+}
+
+function EventCard({ event, past = false }: { event: ImpetusEvent; past?: boolean }) {
+  const interested = useLiked(event.id, 'interested')
+  const going = useLiked(event.id, 'going')
+  const { flagged, flag, unflag, canFlag } = useFlag(event.id)
+
+  return (
+    <div className={`border rounded-xl p-4 transition-colors ${
+      past ? 'bg-zinc-900/50 border-zinc-800/50 opacity-60' : 'bg-zinc-900 border-zinc-800 hover:border-zinc-700'
+    }`}>
+      <div className="flex items-start gap-4">
+        <div className="text-center shrink-0 w-12">
+          <div className="text-emerald-400 font-bold text-lg leading-none">
+            {event.date.getDate()}
+          </div>
+          <div className="text-zinc-500 text-xs uppercase">
+            {event.date.toLocaleString('en-US', { month: 'short' })}
+          </div>
         </div>
-        <div className="text-zinc-500 text-xs uppercase">
-          {event.date.toLocaleString('en-US', { month: 'short' })}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            {event.isVirtual && <Badge variant="blue" size="sm">Virtual</Badge>}
+            {event.location && <Badge variant="default" size="sm">{event.location}</Badge>}
+          </div>
+          <a
+            href={event.externalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-zinc-100 font-medium text-sm hover:text-emerald-400 transition-colors"
+            onClick={e => e.stopPropagation()}
+          >
+            {event.title} ↗
+          </a>
+          {event.description && (
+            <p className="text-zinc-400 text-sm mt-1 leading-relaxed line-clamp-2">{event.description}</p>
+          )}
         </div>
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          {event.isVirtual && <Badge variant="blue" size="sm">Virtual</Badge>}
-          {event.location && <Badge variant="default" size="sm">{event.location}</Badge>}
+
+      {!past && (
+        <div className="flex items-center gap-3 mt-3 pt-2.5 border-t border-zinc-800/70">
+          <Tooltip text={interested.liked ? 'Remove interest' : interested.canLike ? 'Mark as interested' : 'Sign in'}>
+            <button
+              onClick={e => { e.preventDefault(); interested.toggle(() => interestedEvent(event.id), () => uninterestedEvent(event.id)) }}
+              className={`flex items-center gap-1.5 text-xs transition-colors select-none cursor-pointer ${
+                interested.liked
+                  ? 'text-amber-400'
+                  : interested.canLike
+                  ? 'text-zinc-500 hover:text-amber-400'
+                  : 'text-zinc-600 cursor-default'
+              }`}
+            >
+              <StarIcon filled={interested.liked} />
+              <span>{event.interested}</span>
+              <span className="text-zinc-600 ml-0.5">Interested</span>
+            </button>
+          </Tooltip>
+
+          <Tooltip text={going.liked ? 'Remove RSVP' : going.canLike ? 'Mark as going' : 'Sign in'}>
+            <button
+              onClick={e => { e.preventDefault(); going.toggle(() => goingEvent(event.id), () => ungoingEvent(event.id)) }}
+              className={`flex items-center gap-1.5 text-xs transition-colors select-none cursor-pointer ${
+                going.liked
+                  ? 'text-emerald-400'
+                  : going.canLike
+                  ? 'text-zinc-500 hover:text-emerald-400'
+                  : 'text-zinc-600 cursor-default'
+              }`}
+            >
+              <CheckCircleIcon filled={going.liked} />
+              <span>{event.going}</span>
+              <span className="text-zinc-600 ml-0.5">Going</span>
+            </button>
+          </Tooltip>
+
+          <div className="flex-1" />
+          <FlagButton
+            flagged={flagged}
+            onFlag={() => flag(() => flagEvent(event.id))}
+            onUnflag={() => unflag(() => unflagEvent(event.id))}
+            canFlag={canFlag}
+          />
         </div>
-        <p className="text-zinc-100 font-medium text-sm group-hover:text-emerald-400 transition-colors">{event.title}</p>
-        {event.description && (
-          <p className="text-zinc-400 text-sm mt-1 leading-relaxed line-clamp-2">{event.description}</p>
-        )}
-      </div>
-      <span className="text-zinc-600 text-xs shrink-0 pt-1">↗</span>
-    </a>
+      )}
+    </div>
   )
 }
 

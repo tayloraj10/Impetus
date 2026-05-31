@@ -77,6 +77,7 @@ export interface Resource {
   submittedByDisplayName?: string
   createdAt: Date
   likes: number
+  notHelpful: number
   flags: number
 }
 
@@ -94,6 +95,9 @@ export interface ImpetusEvent {
   submittedBy: string
   submittedByDisplayName?: string
   createdAt: Date
+  interested: number
+  going: number
+  flags: number
 }
 
 export interface Challenge {
@@ -108,6 +112,8 @@ export interface Challenge {
   createdBy: string
   createdAt: Date
   participantCount: number
+  upvotes: number
+  flags: number
 }
 
 export interface ChallengeSubmission {

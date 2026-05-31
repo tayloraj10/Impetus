@@ -12,6 +12,8 @@ function toGroup(id: string, data: any): Group {
   return {
     ...data,
     id,
+    likes: data.likes ?? 0,
+    flags: data.flags ?? 0,
     createdAt: data.createdAt?.toDate() ?? new Date(),
     updatedAt: data.updatedAt?.toDate() ?? new Date(),
   }
@@ -87,4 +89,8 @@ export async function unlikeGroup(groupId: string) {
 
 export async function flagGroup(groupId: string) {
   await updateDoc(doc(db, 'groups', groupId), { flags: increment(1) })
+}
+
+export async function unflagGroup(groupId: string) {
+  await updateDoc(doc(db, 'groups', groupId), { flags: increment(-1) })
 }

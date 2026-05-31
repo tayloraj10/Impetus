@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react'
 import type { Resource, CreateResourceInput, Topic } from '../../types'
-import { subscribeResources, createResource, likeResource, unlikeResource } from '../../services/resourcesService'
+import {
+  subscribeResources, createResource,
+  likeResource, unlikeResource,
+  notHelpfulResource, unNotHelpfulResource,
+  flagResource, unflagResource,
+} from '../../services/resourcesService'
 import { useAuth } from '../../hooks/useAuth'
-import { useLiked } from '../../hooks/useLiked'
+import { useLiked, useFlag } from '../../hooks/useLiked'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
-import { LikeButton } from '../ui/LikeButton'
+import { FlagButton } from '../ui/FlagButton'
+import { Tooltip } from '../ui/Tooltip'
 import { Modal } from '../ui/Modal'
 import { Spinner } from '../ui/Spinner'
 
@@ -54,38 +60,90 @@ export function ResourcesComponent({ topic }: { topic: Topic }) {
   )
 }
 
+function ThumbsUp({ filled }: { filled: boolean }) {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 10.5a1.5 1.5 0 1 1 3 0v6a1.5 1.5 0 0 1-3 0v-6zM6 10.333v5.43a2 2 0 0 0 1.106 1.79l.05.025A4 4 0 0 0 8.943 18h5.416a2 2 0 0 0 1.962-1.608l1.2-6A2 2 0 0 0 15.56 8H12V4a2 2 0 0 0-2-2 1 1 0 0 0-1 1v.667a4 4 0 0 1-.8 2.4L6.8 7.933a4 4 0 0 0-.8 2.4z" />
+    </svg>
+  )
+}
+
+function ThumbsDown({ filled }: { filled: boolean }) {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 9.5a1.5 1.5 0 1 1-3 0v-6a1.5 1.5 0 0 1 3 0v6zM14 9.667v-5.43a2 2 0 0 0-1.105-1.79l-.05-.025A4 4 0 0 0 11.055 2H5.64a2 2 0 0 0-1.962 1.608l-1.2 6A2 2 0 0 0 4.44 12H8v4a2 2 0 0 0 2 2 1 1 0 0 0 1-1v-.667a4 4 0 0 1 .8-2.4l1.4-1.866a4 4 0 0 0 .8-2.4z" />
+    </svg>
+  )
+}
+
 function ResourceRow({ resource }: { resource: Resource }) {
-  const { liked, toggle, canLike } = useLiked(resource.id)
+  const helpful = useLiked(resource.id, 'helpful')
+  const notHelpful = useLiked(resource.id, 'nothelpful')
+  const { flagged, flag, unflag, canFlag } = useFlag(resource.id)
 
   return (
-    <div className="flex items-start gap-3 bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors group">
-      <div className="flex-1 min-w-0">
-        <div className="flex flex-wrap items-center gap-2 mb-1">
-          <Badge variant={typeColors[resource.type]}>{resource.type}</Badge>
-        </div>
-        <a
-          href={resource.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-zinc-100 font-medium text-sm hover:text-emerald-400 transition-colors"
-          onClick={e => e.stopPropagation()}
-        >
-          {resource.title} ↗
-        </a>
-        {resource.description && (
-          <p className="text-zinc-400 text-sm mt-1 leading-relaxed">{resource.description}</p>
-        )}
-        {resource.submittedByDisplayName && (
-          <p className="text-zinc-600 text-xs mt-2">Added by {resource.submittedByDisplayName}</p>
-        )}
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors">
+      <div className="flex flex-wrap items-center gap-2 mb-1">
+        <Badge variant={typeColors[resource.type]}>{resource.type}</Badge>
       </div>
-      <LikeButton
-        count={resource.likes}
-        liked={liked}
-        onToggle={() => toggle(() => likeResource(resource.id), () => unlikeResource(resource.id))}
-        canLike={canLike}
-        className="pt-1"
-      />
+      <a
+        href={resource.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-zinc-100 font-medium text-sm hover:text-emerald-400 transition-colors"
+        onClick={e => e.stopPropagation()}
+      >
+        {resource.title} ↗
+      </a>
+      {resource.description && (
+        <p className="text-zinc-400 text-sm mt-1 leading-relaxed">{resource.description}</p>
+      )}
+      {resource.submittedByDisplayName && (
+        <p className="text-zinc-600 text-xs mt-2">Added by {resource.submittedByDisplayName}</p>
+      )}
+
+      <div className="flex items-center gap-3 mt-3 pt-2.5 border-t border-zinc-800/70">
+        <Tooltip text={helpful.liked ? 'Remove helpful vote' : helpful.canLike ? 'Mark as helpful' : 'Sign in to vote'}>
+          <button
+            onClick={e => { e.preventDefault(); helpful.toggle(() => likeResource(resource.id), () => unlikeResource(resource.id)) }}
+            className={`flex items-center gap-1.5 text-xs transition-colors select-none cursor-pointer ${
+              helpful.liked
+                ? 'text-emerald-400'
+                : helpful.canLike
+                ? 'text-zinc-500 hover:text-emerald-400'
+                : 'text-zinc-600 cursor-default'
+            }`}
+          >
+            <ThumbsUp filled={helpful.liked} />
+            <span>{resource.likes}</span>
+            <span className="text-zinc-600 ml-0.5">Helpful</span>
+          </button>
+        </Tooltip>
+
+        <Tooltip text={notHelpful.liked ? 'Remove vote' : notHelpful.canLike ? 'Not helpful' : 'Sign in to vote'}>
+          <button
+            onClick={e => { e.preventDefault(); notHelpful.toggle(() => notHelpfulResource(resource.id), () => unNotHelpfulResource(resource.id)) }}
+            className={`flex items-center gap-1.5 text-xs transition-colors select-none cursor-pointer ${
+              notHelpful.liked
+                ? 'text-zinc-300'
+                : notHelpful.canLike
+                ? 'text-zinc-600 hover:text-zinc-400'
+                : 'text-zinc-700 cursor-default'
+            }`}
+          >
+            <ThumbsDown filled={notHelpful.liked} />
+            <span>{resource.notHelpful}</span>
+          </button>
+        </Tooltip>
+
+        <div className="flex-1" />
+        <FlagButton
+          flagged={flagged}
+          onFlag={() => flag(() => flagResource(resource.id))}
+          onUnflag={() => unflag(() => unflagResource(resource.id))}
+          canFlag={canFlag}
+        />
+      </div>
     </div>
   )
 }

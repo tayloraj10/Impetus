@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTopics } from '../hooks/useTopics'
-import { subscribeAllGroups, likeGroup, unlikeGroup } from '../services/groupsService'
-import { useLiked } from '../hooks/useLiked'
-import { LikeButton } from '../components/ui/LikeButton'
+import { subscribeAllGroups, likeGroup, unlikeGroup, flagGroup, unflagGroup } from '../services/groupsService'
+import { useLiked, useFlag } from '../hooks/useLiked'
+import { FlagButton } from '../components/ui/FlagButton'
+import { Tooltip } from '../components/ui/Tooltip'
 import { GroupLogo } from '../components/topic-components/GroupsComponent'
 import { Spinner } from '../components/ui/Spinner'
 import type { Group } from '../types'
@@ -84,9 +85,19 @@ function FilterChip({ label, active, onClick }: { label: string; active: boolean
   )
 }
 
+function ShieldCheck({ filled }: { filled: boolean }) {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.661 2.237a.531.531 0 0 1 .678 0A11.947 11.947 0 0 0 17.417 4.986a.5.5 0 0 1 .479.425c.069.52.104 1.05.104 1.589 0 5.162-3.26 9.563-7.834 11.256a.48.48 0 0 1-.332 0C5.26 16.563 2 12.162 2 7c0-.538.035-1.069.104-1.589a.5.5 0 0 1 .48-.425 11.947 11.947 0 0 0 7.077-2.749z" />
+      <path d="m7 10 2 2 4-4" />
+    </svg>
+  )
+}
+
 function GroupCard({ group, topicTitle, topicSlug }: { group: Group; topicTitle?: string; topicSlug?: string }) {
   const hasLinks = Object.values(group.links ?? {}).some(Boolean)
-  const { liked, toggle, canLike } = useLiked(group.id)
+  const { liked, toggle, canLike } = useLiked(group.id, 'verified')
+  const { flagged, flag, unflag, canFlag } = useFlag(group.id)
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors flex flex-col">
@@ -95,12 +106,25 @@ function GroupCard({ group, topicTitle, topicSlug }: { group: Group; topicTitle?
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <h3 className="text-zinc-100 font-semibold text-sm leading-snug">{group.name}</h3>
-            <LikeButton
-              count={group.likes}
-              liked={liked}
-              onToggle={() => toggle(() => likeGroup(group.id), () => unlikeGroup(group.id))}
-              canLike={canLike}
-            />
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Tooltip text={liked ? 'Remove confirmation' : canLike ? 'Confirm this group is active' : 'Sign in to confirm'}>
+                <button
+                  onClick={() => toggle(() => likeGroup(group.id), () => unlikeGroup(group.id))}
+                  className={`flex items-center gap-1 text-xs transition-colors select-none cursor-pointer ${
+                    liked ? 'text-emerald-400' : canLike ? 'text-zinc-500 hover:text-emerald-400' : 'text-zinc-600 cursor-default'
+                  }`}
+                >
+                  <ShieldCheck filled={liked} />
+                  <span>{group.likes}</span>
+                </button>
+              </Tooltip>
+              <FlagButton
+                flagged={flagged}
+                onFlag={() => flag(() => flagGroup(group.id))}
+                onUnflag={() => unflag(() => unflagGroup(group.id))}
+                canFlag={canFlag}
+              />
+            </div>
           </div>
           {topicTitle && topicSlug && (
             <Link

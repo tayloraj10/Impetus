@@ -1,9 +1,15 @@
 import React, { useEffect, useState } from 'react'
 import type { Challenge, Topic } from '../../types'
-import { subscribeChallenges, createChallenge, submitChallengeAction } from '../../services/challengesService'
+import {
+  subscribeChallenges, createChallenge, submitChallengeAction,
+  upvoteChallenge, unupvoteChallenge, flagChallenge, unflagChallenge,
+} from '../../services/challengesService'
 import { useAuth } from '../../hooks/useAuth'
+import { useLiked, useFlag } from '../../hooks/useLiked'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
+import { FlagButton } from '../ui/FlagButton'
+import { Tooltip } from '../ui/Tooltip'
 import { Modal } from '../ui/Modal'
 import { Spinner } from '../ui/Spinner'
 import { formatDate } from '../../utils/time'
@@ -52,9 +58,19 @@ export function ChallengesComponent({ topic }: { topic: Topic }) {
   )
 }
 
+function ThumbsUp({ filled }: { filled: boolean }) {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M2 10.5a1.5 1.5 0 1 1 3 0v6a1.5 1.5 0 0 1-3 0v-6zM6 10.333v5.43a2 2 0 0 0 1.106 1.79l.05.025A4 4 0 0 0 8.943 18h5.416a2 2 0 0 0 1.962-1.608l1.2-6A2 2 0 0 0 15.56 8H12V4a2 2 0 0 0-2-2 1 1 0 0 0-1 1v.667a4 4 0 0 1-.8 2.4L6.8 7.933a4 4 0 0 0-.8 2.4z" />
+    </svg>
+  )
+}
+
 function ChallengeCard({ challenge, ended = false }: { challenge: Challenge; ended?: boolean }) {
   const [actionOpen, setActionOpen] = useState(false)
   const { user } = useAuth()
+  const { liked, toggle, canLike } = useLiked(challenge.id, 'upvoted')
+  const { flagged, flag, unflag, canFlag } = useFlag(challenge.id)
 
   return (
     <div className={`border rounded-xl p-5 ${ended ? 'border-zinc-800/50 opacity-60' : 'border-zinc-700 bg-zinc-900'}`}>
@@ -81,11 +97,30 @@ function ChallengeCard({ challenge, ended = false }: { challenge: Challenge; end
         </div>
       </div>
 
-      {!ended && user && (
-        <div className="mt-4">
+      <div className="flex items-center gap-3 mt-4 pt-3 border-t border-zinc-800/70">
+        {!ended && user && (
           <Button size="sm" onClick={() => setActionOpen(true)}>Take Action</Button>
-        </div>
-      )}
+        )}
+        <Tooltip text={liked ? 'Remove upvote' : canLike ? 'Good challenge' : 'Sign in to vote'}>
+          <button
+            onClick={e => { e.preventDefault(); toggle(() => upvoteChallenge(challenge.id), () => unupvoteChallenge(challenge.id)) }}
+            className={`flex items-center gap-1.5 text-xs transition-colors select-none cursor-pointer ${
+              liked ? 'text-emerald-400' : canLike ? 'text-zinc-500 hover:text-emerald-400' : 'text-zinc-600 cursor-default'
+            }`}
+          >
+            <ThumbsUp filled={liked} />
+            <span>{challenge.upvotes}</span>
+            <span className="text-zinc-600 ml-0.5">Good challenge</span>
+          </button>
+        </Tooltip>
+        <div className="flex-1" />
+        <FlagButton
+          flagged={flagged}
+          onFlag={() => flag(() => flagChallenge(challenge.id))}
+          onUnflag={() => unflag(() => unflagChallenge(challenge.id))}
+          canFlag={canFlag}
+        />
+      </div>
 
       <SubmitActionModal
         open={actionOpen}

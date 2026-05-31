@@ -13,6 +13,8 @@ function toChallenge(id: string, data: any): Challenge {
     ...data,
     id,
     deadline: data.deadline?.toDate(),
+    upvotes: data.upvotes ?? 0,
+    flags: data.flags ?? 0,
     createdAt: data.createdAt?.toDate() ?? new Date(),
   }
 }
@@ -30,13 +32,15 @@ export function subscribeChallenges(topicId: string, callback: (challenges: Chal
 }
 
 export async function createChallenge(
-  data: Omit<Challenge, 'id' | 'createdAt' | 'participantCount'>,
+  data: Omit<Challenge, 'id' | 'createdAt' | 'participantCount' | 'upvotes' | 'flags'>,
   topicTitle: string,
   topicSlug: string,
 ): Promise<void> {
   const ref = await addDoc(collection(db, 'challenges'), {
     ...data,
     participantCount: 0,
+    upvotes: 0,
+    flags: 0,
     createdAt: serverTimestamp(),
   })
 
@@ -69,4 +73,20 @@ export async function submitChallengeAction(
       participantCount: increment(1),
     }),
   ])
+}
+
+export async function upvoteChallenge(challengeId: string) {
+  await updateDoc(doc(db, 'challenges', challengeId), { upvotes: increment(1) })
+}
+
+export async function unupvoteChallenge(challengeId: string) {
+  await updateDoc(doc(db, 'challenges', challengeId), { upvotes: increment(-1) })
+}
+
+export async function flagChallenge(challengeId: string) {
+  await updateDoc(doc(db, 'challenges', challengeId), { flags: increment(1) })
+}
+
+export async function unflagChallenge(challengeId: string) {
+  await updateDoc(doc(db, 'challenges', challengeId), { flags: increment(-1) })
 }

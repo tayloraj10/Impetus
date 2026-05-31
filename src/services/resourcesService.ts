@@ -12,6 +12,8 @@ function toResource(id: string, data: any): Resource {
   return {
     ...data,
     id,
+    notHelpful: data.notHelpful ?? 0,
+    flags: data.flags ?? 0,
     createdAt: data.createdAt?.toDate() ?? new Date(),
   }
 }
@@ -41,6 +43,7 @@ export async function createResource(
     submittedBy: userId,
     submittedByDisplayName: displayName,
     likes: 0,
+    notHelpful: 0,
     flags: 0,
     createdAt: serverTimestamp(),
   })
@@ -71,6 +74,18 @@ export async function unlikeResource(resourceId: string) {
   await updateDoc(doc(db, 'resources', resourceId), { likes: increment(-1) })
 }
 
+export async function notHelpfulResource(resourceId: string) {
+  await updateDoc(doc(db, 'resources', resourceId), { notHelpful: increment(1) })
+}
+
+export async function unNotHelpfulResource(resourceId: string) {
+  await updateDoc(doc(db, 'resources', resourceId), { notHelpful: increment(-1) })
+}
+
 export async function flagResource(resourceId: string) {
   await updateDoc(doc(db, 'resources', resourceId), { flags: increment(1) })
+}
+
+export async function unflagResource(resourceId: string) {
+  await updateDoc(doc(db, 'resources', resourceId), { flags: increment(-1) })
 }

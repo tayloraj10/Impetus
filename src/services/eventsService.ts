@@ -1,6 +1,6 @@
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc,
-  serverTimestamp, Timestamp,
+  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc,
+  doc, serverTimestamp, increment, Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
@@ -14,6 +14,9 @@ function toEvent(id: string, data: any): ImpetusEvent {
     id,
     date: data.date?.toDate() ?? new Date(),
     endDate: data.endDate?.toDate(),
+    interested: data.interested ?? 0,
+    going: data.going ?? 0,
+    flags: data.flags ?? 0,
     createdAt: data.createdAt?.toDate() ?? new Date(),
   }
 }
@@ -44,6 +47,9 @@ export async function createEvent(
     moderationStatus: 'pending_review',
     submittedBy: userId,
     submittedByDisplayName: displayName,
+    interested: 0,
+    going: 0,
+    flags: 0,
     createdAt: serverTimestamp(),
   })
 
@@ -63,4 +69,28 @@ export async function createEvent(
     }),
     incrementTopicCount(input.topicId, 'eventCount'),
   ])
+}
+
+export async function interestedEvent(eventId: string) {
+  await updateDoc(doc(db, 'events', eventId), { interested: increment(1) })
+}
+
+export async function uninterestedEvent(eventId: string) {
+  await updateDoc(doc(db, 'events', eventId), { interested: increment(-1) })
+}
+
+export async function goingEvent(eventId: string) {
+  await updateDoc(doc(db, 'events', eventId), { going: increment(1) })
+}
+
+export async function ungoingEvent(eventId: string) {
+  await updateDoc(doc(db, 'events', eventId), { going: increment(-1) })
+}
+
+export async function flagEvent(eventId: string) {
+  await updateDoc(doc(db, 'events', eventId), { flags: increment(1) })
+}
+
+export async function unflagEvent(eventId: string) {
+  await updateDoc(doc(db, 'events', eventId), { flags: increment(-1) })
 }
