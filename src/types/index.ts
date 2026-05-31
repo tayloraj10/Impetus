@@ -1,0 +1,169 @@
+import type { Timestamp } from 'firebase/firestore'
+
+export type ComponentType = 'groups' | 'resources' | 'events' | 'challenges'
+
+export type ModerationStatus = 'live' | 'pending_review' | 'pending_approval' | 'rejected'
+
+export interface Topic {
+  id: string
+  title: string
+  slug: string
+  description: string
+  coverEmoji?: string
+  tags: string[]
+  enabledComponents: ComponentType[]
+  status: 'active' | 'pending' | 'archived'
+  createdBy: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  activityScore: number
+  lastActivityAt: Timestamp
+  groupCount: number
+  resourceCount: number
+  eventCount: number
+  challengeCount: number
+}
+
+export interface FeedItem {
+  id: string
+  type: 'group' | 'resource' | 'event' | 'challenge' | 'topic_created'
+  refId: string
+  topicId: string
+  topicTitle: string
+  topicSlug: string
+  title: string
+  description?: string
+  url?: string
+  createdAt: Timestamp
+  likes: number
+  submittedBy: string
+  submittedByDisplayName?: string
+}
+
+export interface Group {
+  id: string
+  topicId: string
+  name: string
+  description: string
+  location?: {
+    city?: string
+    state?: string
+    country?: string
+  }
+  links: {
+    website?: string
+    instagram?: string
+    facebook?: string
+    twitter?: string
+    youtube?: string
+  }
+  moderationStatus: ModerationStatus
+  submittedBy: string
+  submittedByDisplayName?: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  likes: number
+  flags: number
+}
+
+export interface Resource {
+  id: string
+  topicId: string
+  title: string
+  url: string
+  type: 'article' | 'video' | 'government' | 'tool' | 'guide' | 'other'
+  description?: string
+  moderationStatus: ModerationStatus
+  submittedBy: string
+  submittedByDisplayName?: string
+  createdAt: Timestamp
+  likes: number
+  flags: number
+}
+
+export interface ImpetusEvent {
+  id: string
+  topicId: string
+  title: string
+  date: Timestamp
+  endDate?: Timestamp
+  location?: string
+  isVirtual: boolean
+  externalUrl: string
+  description?: string
+  moderationStatus: ModerationStatus
+  submittedBy: string
+  submittedByDisplayName?: string
+  createdAt: Timestamp
+}
+
+export interface Challenge {
+  id: string
+  topicId: string
+  title: string
+  description: string
+  actionPrompt: string
+  deadline?: Timestamp
+  type: 'individual' | 'group_competition'
+  moderationStatus: 'active' | 'ended' | 'pending_approval' | 'rejected'
+  createdBy: string
+  createdAt: Timestamp
+  participantCount: number
+}
+
+export interface ChallengeSubmission {
+  id: string
+  challengeId: string
+  topicId: string
+  userId: string
+  userDisplayName: string
+  proofImageUrl?: string
+  note?: string
+  createdAt: Timestamp
+}
+
+export interface TopicSuggestion {
+  id: string
+  title: string
+  description: string
+  suggestedBy: string
+  suggestedByDisplayName?: string
+  status: 'pending' | 'approved' | 'rejected'
+  createdAt: Timestamp
+}
+
+export interface UserProfile {
+  id: string
+  displayName: string
+  email: string
+  photoURL?: string
+  role: 'user' | 'moderator' | 'admin'
+  createdAt: Timestamp
+}
+
+export interface CreateGroupInput {
+  topicId: string
+  name: string
+  description: string
+  location?: Group['location']
+  links?: Group['links']
+}
+
+export interface CreateResourceInput {
+  topicId: string
+  title: string
+  url: string
+  type: Resource['type']
+  description?: string
+}
+
+export interface CreateEventInput {
+  topicId: string
+  title: string
+  date: Date
+  endDate?: Date
+  location?: string
+  isVirtual: boolean
+  externalUrl: string
+  description?: string
+}
