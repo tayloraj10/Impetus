@@ -18,13 +18,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     return onAuthChange(async (u) => {
       setUser(u)
+      setLoading(false)
       if (u) {
         const r = await getUserRole(u.uid)
         setRole(r)
       } else {
         setRole('user')
       }
-      setLoading(false)
     })
   }, [])
 

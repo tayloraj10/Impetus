@@ -14,6 +14,9 @@ export function subscribeTopics(callback: (topics: Topic[]) => void): Unsubscrib
   )
   return onSnapshot(q, (snap) => {
     callback(snap.docs.map(d => ({ id: d.id, ...d.data() }) as Topic))
+  }, (err) => {
+    console.error('subscribeTopics error:', err)
+    callback([])
   })
 }
 

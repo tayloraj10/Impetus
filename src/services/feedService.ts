@@ -13,13 +13,12 @@ export function subscribeFeed(callback: (items: FeedItem[]) => void): Unsubscrib
   )
   return onSnapshot(q, (snap) => {
     const raw = snap.docs.map(d => ({ id: d.id, ...d.data() }) as FeedItem)
-    // Client-side hot score: likes boost + recency
-    const scored = raw.map(item => ({
-      item,
-      score: hotScore(item),
-    }))
+    const scored = raw.map(item => ({ item, score: hotScore(item) }))
     scored.sort((a, b) => b.score - a.score)
     callback(scored.map(s => s.item))
+  }, (err) => {
+    console.error('subscribeFeed error:', err)
+    callback([])
   })
 }
 
