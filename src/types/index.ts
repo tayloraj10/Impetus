@@ -51,6 +51,7 @@ export interface Group {
     zipCode?: string
     country?: string
   }
+  coordinates?: { lat: number; lng: number }
   links: {
     website?: string
     instagram?: string
@@ -97,6 +98,7 @@ export interface ImpetusEvent {
   date: Date
   endDate?: Date
   location?: string
+  coordinates?: { lat: number; lng: number }
   isVirtual: boolean
   externalUrl: string
   description?: string

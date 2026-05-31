@@ -206,6 +206,36 @@ const GROUP_CATEGORIES = [
   'Other',
 ]
 
+function isGeocodeable(loc: CreateGroupInput['location']): boolean {
+  if (!loc) return false
+  if (loc.zipCode) return true
+  return !!(loc.city && (loc.state || loc.country))
+}
+
+function LocationMapHint({ location }: { location: CreateGroupInput['location'] }) {
+  const loc = location ?? {}
+  const hasAny = !!(loc.city || loc.state || loc.zipCode || loc.country)
+  if (isGeocodeable(loc)) {
+    return (
+      <p className="text-xs text-emerald-400 flex items-center gap-1.5">
+        <span>✓</span> Location set — this group will appear on the map
+      </p>
+    )
+  }
+  if (hasAny) {
+    return (
+      <p className="text-xs text-amber-400/80">
+        Add city + state/country, or zip code to have this group appear on the map
+      </p>
+    )
+  }
+  return (
+    <p className="text-xs text-zinc-500">
+      For map visibility: provide city + state/country, or zip code
+    </p>
+  )
+}
+
 function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () => void; topic: Topic }) {
   const { user } = useAuth()
   const [form, setForm] = useState<CreateGroupInput>({
@@ -331,6 +361,7 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
             <input value={form.location?.country ?? ''} onChange={e => setLoc('country', e.target.value)} />
           </Field>
         </div>
+        <LocationMapHint location={form.location} />
 
         <div className="grid grid-cols-2 gap-2">
           <Field label="Website">

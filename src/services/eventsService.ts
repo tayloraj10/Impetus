@@ -7,6 +7,7 @@ import { db } from '../config/firebase'
 import type { ImpetusEvent, CreateEventInput } from '../types'
 import { createFeedItem, deleteFeedItemByRefId } from './feedService'
 import { incrementTopicCount, decrementTopicCount } from './topicsService'
+import { geocodeAddress } from './geocodeService'
 
 function toEvent(id: string, data: any): ImpetusEvent {
   return {
@@ -41,10 +42,14 @@ export async function createEvent(
   topicTitle: string,
   topicSlug: string,
 ): Promise<void> {
+  const coordinates =
+    !input.isVirtual && input.location ? await geocodeAddress(input.location) : null
+
   const ref = await addDoc(collection(db, 'events'), {
     ...input,
     date: Timestamp.fromDate(input.date),
     endDate: input.endDate ? Timestamp.fromDate(input.endDate) : null,
+    ...(coordinates ? { coordinates } : {}),
     moderationStatus: 'pending_review',
     submittedBy: userId,
     submittedByDisplayName: displayName,
