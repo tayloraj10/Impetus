@@ -16,7 +16,7 @@ function ts(daysAgo: number, hoursAgo = 0, minutesAgo = 0): Timestamp {
 }
 
 async function findOrCreateTopic(slug: string, topicData: {
-  title: string; description: string; tags: string[]
+  title: string; description: string; category: string; tags: string[]
 }): Promise<{ id: string; title: string; slug: string }> {
   const snap = await getDocs(query(collection(db, 'topics'), where('slug', '==', slug)))
   if (!snap.empty) {
@@ -59,6 +59,7 @@ export async function seedTrashCleanups(userId: string, displayName: string): Pr
   const { id: topicId, title: topicTitle } = await findOrCreateTopic('trash-cleanup', {
     title: 'Trash Cleanups',
     description: 'Find, join, and organize community cleanup events in your area. From neighborhood litter picks to river restoration — every piece counts.',
+    category: 'Environment',
     tags: ['environment', 'community', 'volunteer', 'outdoors'],
   })
   await wipeTopic(topicId)
@@ -67,6 +68,7 @@ export async function seedTrashCleanups(userId: string, displayName: string): Pr
   const groups = [
     {
       topicId, name: 'Keep Austin Clean',
+      category: 'Nonprofit',
       description: 'Community-led cleanup org covering Austin parks, trails, and neighborhoods. Running monthly events since 2018.',
       location: { city: 'Austin', state: 'TX', country: 'US' },
       coordinates: { lat: 30.2672, lng: -97.7431 },
@@ -76,6 +78,7 @@ export async function seedTrashCleanups(userId: string, displayName: string): Pr
     },
     {
       topicId, name: 'NYC Sanitation Volunteers',
+      category: 'Government Agency',
       description: 'Partnered with NYC DSNY to fill sanitation gaps — deploying volunteer squads in underserved neighborhoods.',
       location: { city: 'New York', state: 'NY', country: 'US' },
       coordinates: { lat: 40.7128, lng: -74.006 },
@@ -85,6 +88,7 @@ export async function seedTrashCleanups(userId: string, displayName: string): Pr
     },
     {
       topicId, name: 'Bay Area Cleanup Crew',
+      category: 'Grassroots / Community',
       description: 'Weekly beach and park cleanups across the Bay. All gear provided, no experience needed.',
       location: { city: 'San Francisco', state: 'CA', country: 'US' },
       coordinates: { lat: 37.7749, lng: -122.4194 },
@@ -199,6 +203,7 @@ export async function seedAmazonBoycott(userId: string, displayName: string): Pr
   const { id: topicId, title: topicTitle } = await findOrCreateTopic('amazon-boycott', {
     title: 'Amazon Boycott',
     description: 'Coordinating consumer campaigns against Amazon\'s labor practices, anti-competitive behavior, and worker rights violations. Finding alternatives and supporting the workers organizing inside.',
+    category: 'Consumer Rights',
     tags: ['boycott', 'corporate-accountability', 'workers-rights', 'consumer-activism'],
   })
   await wipeTopic(topicId)
@@ -207,6 +212,7 @@ export async function seedAmazonBoycott(userId: string, displayName: string): Pr
   const groups = [
     {
       topicId, name: 'Amazon Workers United',
+      category: 'Grassroots / Community',
       description: 'Independent labor union organizing drive across Amazon warehouses and delivery network. First successful Amazon union in the US.',
       location: { city: 'Staten Island', state: 'NY', country: 'US' },
       coordinates: { lat: 40.5795, lng: -74.1502 },
@@ -216,6 +222,7 @@ export async function seedAmazonBoycott(userId: string, displayName: string): Pr
     },
     {
       topicId, name: 'Shut Down Prime Alliance',
+      category: 'Grassroots / Community',
       description: 'Consumer coalition coordinating Prime Day boycotts and building awareness around ethical alternatives to Amazon shopping.',
       location: {},
       links: { instagram: 'https://instagram.com/shutdownprime' },
@@ -316,6 +323,7 @@ export async function seedDataCenters(userId: string, displayName: string): Prom
   const { id: topicId, title: topicTitle } = await findOrCreateTopic('data-centers', {
     title: 'Data Centers',
     description: 'Tracking the explosive energy and water consumption of AI and cloud data centers. Advocating for renewable energy mandates, water-use disclosure, and community impact accountability.',
+    category: 'Technology & Ethics',
     tags: ['tech', 'ai', 'energy', 'climate', 'corporate-accountability'],
   })
   await wipeTopic(topicId)
@@ -324,6 +332,7 @@ export async function seedDataCenters(userId: string, displayName: string): Prom
   const groups = [
     {
       topicId, name: 'Clean Computing Alliance',
+      category: 'Nonprofit',
       description: 'Advocacy group pushing for 100% renewable energy standards and water use caps across the tech industry.',
       location: {},
       links: { website: 'https://cleancomputing.org', twitter: 'https://twitter.com/cleancomputing' },
@@ -332,6 +341,7 @@ export async function seedDataCenters(userId: string, displayName: string): Prom
     },
     {
       topicId, name: 'AI Climate Accountability Watch',
+      category: 'University / Research',
       description: 'Researchers and journalists tracking the actual vs. claimed environmental footprint of AI development.',
       location: {},
       links: { website: 'https://aiclimatewatch.org' },
@@ -432,6 +442,7 @@ export async function seedNewEarthCommunities(userId: string, displayName: strin
   const { id: topicId, title: topicTitle } = await findOrCreateTopic('new-earth-communities', {
     title: 'New Earth Communities',
     description: 'Finding, building, and connecting intentional communities, ecovillages, and cooperative living experiments worldwide. From urban cohousing to rural permaculture villages.',
+    category: 'Community & Sustainability',
     tags: ['ecovillage', 'community', 'sustainability', 'intentional-living', 'cooperative'],
   })
   await wipeTopic(topicId)
@@ -440,6 +451,7 @@ export async function seedNewEarthCommunities(userId: string, displayName: strin
   const groups = [
     {
       topicId, name: 'Global Ecovillage Network',
+      category: 'Nonprofit',
       description: 'Worldwide network connecting over 10,000 ecovillages in more than 100 countries. Training, events, and community listings.',
       location: {},
       links: { website: 'https://ecovillage.org', facebook: 'https://facebook.com/gen.ecovillage' },
@@ -448,6 +460,7 @@ export async function seedNewEarthCommunities(userId: string, displayName: strin
     },
     {
       topicId, name: 'Foundation for Intentional Community',
+      category: 'Nonprofit',
       description: 'Largest North American database of intentional communities — cohousing, communes, ecovillages, and co-ops.',
       location: {},
       links: { website: 'https://www.ic.org', instagram: 'https://instagram.com/intentional.community' },
@@ -456,6 +469,7 @@ export async function seedNewEarthCommunities(userId: string, displayName: strin
     },
     {
       topicId, name: 'Transition Towns Network',
+      category: 'Grassroots / Community',
       description: 'Community-led initiatives building local resilience and transitioning away from fossil fuels. Active in 50+ countries.',
       location: {},
       links: { website: 'https://transitionnetwork.org' },
@@ -569,6 +583,7 @@ export async function seedCorporateFarmAcquisitions(userId: string, displayName:
   const { id: topicId, title: topicTitle } = await findOrCreateTopic('corporate-farm-acquisitions', {
     title: 'Corporate Farm Acquisitions',
     description: 'Exposing and fighting the corporate takeover of American farmland. Supporting family farms, food sovereignty, and local food systems against institutional land grabs.',
+    category: 'Agriculture & Food',
     tags: ['agriculture', 'land', 'food-system', 'family-farms', 'corporate-accountability'],
   })
   await wipeTopic(topicId)
@@ -577,6 +592,7 @@ export async function seedCorporateFarmAcquisitions(userId: string, displayName:
   const groups = [
     {
       topicId, name: 'Family Farm Action Alliance',
+      category: 'Nonprofit',
       description: 'National coalition defending family farmers against consolidation, corporate contract farming, and land loss.',
       location: { city: 'Washington', state: 'DC', country: 'US' },
       coordinates: { lat: 38.9072, lng: -77.0369 },
@@ -586,6 +602,7 @@ export async function seedCorporateFarmAcquisitions(userId: string, displayName:
     },
     {
       topicId, name: 'National Farmers Union',
+      category: 'Nonprofit',
       description: 'One of the oldest US farm organizations, advocating for fair prices, rural communities, and anti-monopoly policies in agriculture.',
       location: { city: 'Washington', state: 'DC', country: 'US' },
       coordinates: { lat: 38.9072, lng: -77.0369 },
@@ -595,6 +612,7 @@ export async function seedCorporateFarmAcquisitions(userId: string, displayName:
     },
     {
       topicId, name: 'Land Stewardship Project',
+      category: 'Nonprofit',
       description: 'Minnesota-based org working on farmland access, beginning farmer programs, and farmer-to-farmer networks in the Upper Midwest.',
       location: { city: 'Minneapolis', state: 'MN', country: 'US' },
       coordinates: { lat: 44.9778, lng: -93.265 },
@@ -697,6 +715,7 @@ export async function seedSolarpunk(userId: string, displayName: string): Promis
   const { id: topicId, title: topicTitle } = await findOrCreateTopic('solarpunk', {
     title: 'Solarpunk',
     description: 'A movement imagining — and building — a future that is both sustainable and joyful. Solar energy, community gardens, mutual aid, and a world where technology serves people and planet.',
+    category: 'Community & Sustainability',
     tags: ['solarpunk', 'sustainability', 'community', 'futures', 'mutual-aid'],
   })
   await wipeTopic(topicId)
@@ -705,6 +724,7 @@ export async function seedSolarpunk(userId: string, displayName: string): Promis
   const groups = [
     {
       topicId, name: 'Solarpunk Magazine',
+      category: 'Online Community',
       description: 'Online magazine and community hub publishing solarpunk fiction, theory, and practical guides to building the world we want.',
       location: {},
       links: { website: 'https://solarpunkmagazine.com', instagram: 'https://instagram.com/solarpunkmag' },
@@ -713,6 +733,7 @@ export async function seedSolarpunk(userId: string, displayName: string): Promis
     },
     {
       topicId, name: 'Sunflower Alliance',
+      category: 'Grassroots / Community',
       description: 'Bay Area coalition linking climate, labor, and environmental justice movements. Community organizing, skill-shares, and direct action.',
       location: { city: 'Oakland', state: 'CA', country: 'US' },
       coordinates: { lat: 37.8044, lng: -122.2712 },
@@ -722,6 +743,7 @@ export async function seedSolarpunk(userId: string, displayName: string): Promis
     },
     {
       topicId, name: 'Solarpunk NYC',
+      category: 'Grassroots / Community',
       description: 'Local chapter running community gardens, tool libraries, repair cafes, and mutual aid networks across New York City.',
       location: { city: 'New York', state: 'NY', country: 'US' },
       coordinates: { lat: 40.7128, lng: -74.006 },
@@ -835,6 +857,7 @@ export async function seedUrbanRewilding(userId: string, displayName: string): P
   const { id: topicId, title: topicTitle } = await findOrCreateTopic('urban-rewilding', {
     title: 'Urban Rewilding',
     description: 'Bringing nature back into cities — native plant gardens, pollinator corridors, urban forests, and wildlife habitat in the spaces between buildings. Turning concrete into ecosystems.',
+    category: 'Environment',
     tags: ['rewilding', 'nature', 'urban', 'biodiversity', 'native-plants'],
   })
   await wipeTopic(topicId)
@@ -843,6 +866,7 @@ export async function seedUrbanRewilding(userId: string, displayName: string): P
   const groups = [
     {
       topicId, name: 'Rewilding Britain',
+      category: 'Nonprofit',
       description: 'Leading UK rewilding charity working with landowners, communities, and governments to restore wild nature at scale.',
       location: { city: 'London', country: 'UK' },
       coordinates: { lat: 51.5074, lng: -0.1278 },
@@ -852,6 +876,7 @@ export async function seedUrbanRewilding(userId: string, displayName: string): P
     },
     {
       topicId, name: 'American Prairie',
+      category: 'Nonprofit',
       description: 'Building the largest nature reserve in the continental US by stitching together private and public land on the Great Plains.',
       location: { city: 'Bozeman', state: 'MT', country: 'US' },
       coordinates: { lat: 45.677, lng: -111.0429 },
@@ -861,6 +886,7 @@ export async function seedUrbanRewilding(userId: string, displayName: string): P
     },
     {
       topicId, name: 'Pollinator Pathway',
+      category: 'Grassroots / Community',
       description: 'Citizen-science project connecting neighborhoods with native plantings to create migration corridors for bees, butterflies, and birds.',
       location: {},
       links: { website: 'https://www.pollinatorpathway.com' },
@@ -974,6 +1000,7 @@ export async function seedRightToRepair(userId: string, displayName: string): Pr
   const { id: topicId, title: topicTitle } = await findOrCreateTopic('right-to-repair', {
     title: 'Right to Repair',
     description: 'Fighting planned obsolescence and corporate repair monopolies. Advocating for legislation that lets consumers and independent shops fix the products they own.',
+    category: 'Consumer Rights',
     tags: ['right-to-repair', 'sustainability', 'consumer-rights', 'electronics', 'waste'],
   })
   await wipeTopic(topicId)
@@ -982,6 +1009,7 @@ export async function seedRightToRepair(userId: string, displayName: string): Pr
   const groups = [
     {
       topicId, name: 'iFixit',
+      category: 'Online Community',
       description: 'Global repair community with 100,000+ free repair guides, a spare parts store, and active lobbying for right-to-repair legislation worldwide.',
       location: { city: 'San Luis Obispo', state: 'CA', country: 'US' },
       coordinates: { lat: 35.2828, lng: -120.6596 },
@@ -991,6 +1019,7 @@ export async function seedRightToRepair(userId: string, displayName: string): Pr
     },
     {
       topicId, name: 'Repair Café International',
+      category: 'Nonprofit',
       description: 'Network of 2,500+ free repair events worldwide where volunteers help people fix their broken items instead of throwing them away.',
       location: {},
       links: { website: 'https://www.repaircafe.org', instagram: 'https://instagram.com/repaircafe_international' },
@@ -999,6 +1028,7 @@ export async function seedRightToRepair(userId: string, displayName: string): Pr
     },
     {
       topicId, name: 'US PIRG Right to Repair',
+      category: 'Nonprofit',
       description: 'Public interest research group leading the Right to Repair legislative campaign across US states. Tracks bills and coordinates advocacy.',
       location: { city: 'Washington', state: 'DC', country: 'US' },
       coordinates: { lat: 38.9072, lng: -77.0369 },
@@ -1113,6 +1143,7 @@ export async function seedEthicalAI(userId: string, displayName: string): Promis
   const { id: topicId } = await findOrCreateTopic('ethical-ai', {
     title: 'Ethical AI',
     description: 'Advocating for AI systems that are transparent, fair, and accountable. Addressing algorithmic bias, surveillance, autonomous weapons, and who benefits from AI — and who bears its risks.',
+    category: 'Technology & Ethics',
     tags: ['ai', 'ethics', 'technology', 'accountability', 'bias'],
   })
   await wipeTopic(topicId)

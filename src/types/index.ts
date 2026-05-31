@@ -7,6 +7,7 @@ export interface Topic {
   title: string
   slug: string
   description: string
+  category?: string
   tags: string[]
   imageUrl?: string
   enabledComponents: ComponentType[]
@@ -171,6 +172,12 @@ export interface CreateGroupInput {
   imageUrl?: string
   location?: Group['location']
   links?: Group['links']
+}
+
+export interface Category {
+  id: string
+  label: string
+  createdAt: Date
 }
 
 export interface CreateResourceInput {

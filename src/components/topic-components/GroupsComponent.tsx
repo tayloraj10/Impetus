@@ -5,6 +5,7 @@ import { subscribeGroups, createGroup, likeGroup, unlikeGroup, flagGroup, unflag
 import { uploadImage, groupLogoPath } from '../../services/storageService'
 import { useAuth } from '../../hooks/useAuth'
 import { useLiked, useFlag } from '../../hooks/useLiked'
+import { useCategories } from '../../hooks/useGroupCategories'
 import { Button } from '../ui/Button'
 import { FlagButton } from '../ui/FlagButton'
 import { ModerateButtons } from '../ui/ModerateButtons'
@@ -195,17 +196,6 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   )
 }
 
-const GROUP_CATEGORIES = [
-  'Nonprofit',
-  'Grassroots / Community',
-  'Government Agency',
-  'Corporate / Business',
-  'Faith-based',
-  'Online Community',
-  'University / Research',
-  'Other',
-]
-
 function isGeocodeable(loc: CreateGroupInput['location']): boolean {
   if (!loc) return false
   if (loc.zipCode) return true
@@ -238,6 +228,7 @@ function LocationMapHint({ location }: { location: CreateGroupInput['location'] 
 
 function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () => void; topic: Topic }) {
   const { user } = useAuth()
+  const { categories } = useCategories()
   const [form, setForm] = useState<CreateGroupInput>({
     topicId: topic.id,
     name: '',
@@ -315,7 +306,7 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
         <Field label="Category">
           <select value={form.category ?? ''} onChange={e => set('category', e.target.value)}>
             <option value="">Select a category...</option>
-            {GROUP_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+            {categories.map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
           </select>
         </Field>
 

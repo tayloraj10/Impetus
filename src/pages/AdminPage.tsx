@@ -2,6 +2,8 @@ import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useAllTopics } from '../hooks/useTopics'
 import { createTopic, updateTopic } from '../services/topicsService'
+import { useCategories } from '../hooks/useGroupCategories'
+import { addCategory, deleteCategory, seedDefaultCategories } from '../services/categoriesService'
 import {
   subscribePendingGroups, setGroupModerationStatus,
   subscribeRemovedGroups, restoreGroup, deleteGroup,
@@ -67,7 +69,7 @@ export function AdminPage() {
       <RemovedSection topicMap={topicMap} />
 
       {isAdmin && (
-        <section>
+        <section className="mb-8">
           <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-4">
             Topics ({topics.length})
           </h2>
@@ -84,6 +86,8 @@ export function AdminPage() {
               </>
             )}
           </div>
+
+          <CategoriesManager />
         </section>
       )}
 
@@ -95,6 +99,97 @@ export function AdminPage() {
           )}
         </>
       )}
+    </div>
+  )
+}
+
+function CategoriesManager() {
+  const { categories, loading } = useCategories()
+  const [input, setInput] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [seeding, setSeeding] = useState(false)
+  const [error, setError] = useState('')
+
+  const normalized = input.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+  const duplicate = categories.some(c => c.id === normalized)
+
+  async function handleAdd(e: React.FormEvent) {
+    e.preventDefault()
+    if (!input.trim() || duplicate) return
+    setAdding(true)
+    setError('')
+    try {
+      await addCategory(input)
+      setInput('')
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to add')
+    } finally {
+      setAdding(false)
+    }
+  }
+
+  async function handleSeed() {
+    setSeeding(true)
+    try { await seedDefaultCategories() } finally { setSeeding(false) }
+  }
+
+  return (
+    <div className="mt-6 pt-6 border-t border-zinc-800">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-medium text-zinc-500 uppercase tracking-wider">
+          Categories ({categories.length})
+        </p>
+        {categories.length === 0 && !loading && (
+          <button
+            onClick={handleSeed}
+            disabled={seeding}
+            className="text-xs px-2.5 py-1 rounded-lg border border-zinc-700 text-zinc-400 hover:border-emerald-700 hover:text-emerald-400 transition-colors cursor-pointer disabled:opacity-50"
+          >
+            {seeding ? 'Seeding…' : 'Seed defaults'}
+          </button>
+        )}
+      </div>
+
+      {loading ? (
+        <p className="text-zinc-600 text-xs">Loading…</p>
+      ) : (
+        <div className="flex flex-wrap gap-2 mb-3">
+          {categories.map(c => (
+            <span key={c.id} className="inline-flex items-center gap-1.5 text-xs bg-zinc-800 border border-zinc-700 text-zinc-300 px-2.5 py-1 rounded-full">
+              {c.label}
+              <button
+                onClick={() => deleteCategory(c.id)}
+                className="text-zinc-600 hover:text-red-400 transition-colors leading-none cursor-pointer"
+                title="Delete category"
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <form onSubmit={handleAdd} className="flex gap-2">
+        <div className="flex-1">
+          <input
+            value={input}
+            onChange={e => { setInput(e.target.value); setError('') }}
+            placeholder="Add a category…"
+            className={`w-full bg-zinc-800 border rounded-lg px-3 py-1.5 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors ${
+              duplicate ? 'border-amber-600 focus:border-amber-500' : 'border-zinc-700 focus:border-emerald-500'
+            }`}
+          />
+          {duplicate && <p className="text-amber-400 text-xs mt-1">"{input.trim()}" already exists</p>}
+          {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+        </div>
+        <button
+          type="submit"
+          disabled={adding || !input.trim() || duplicate}
+          className="shrink-0 text-sm px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {adding ? '…' : 'Add'}
+        </button>
+      </form>
     </div>
   )
 }
