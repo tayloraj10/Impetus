@@ -26,69 +26,105 @@ export function HomePage() {
     .filter(entry => typeFilter === 'all' || entry.totalCount > 0)
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="mb-10">
-        <h1 className="text-4xl sm:text-5xl font-bold text-zinc-100 tracking-tight leading-tight">
+    <div className="max-w-6xl mx-auto px-4 flex flex-col lg:h-[calc(100vh-3.5rem)]">
+
+      {/* Hero — compact, pinned on desktop */}
+      <div className="py-4 shrink-0">
+        <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">
           Engine of{' '}
           <span className="bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent">
             change.
           </span>
         </h1>
-        <p className="text-zinc-400 mt-3 text-lg leading-relaxed">
+        <p className="text-zinc-500 text-sm mt-0.5">
           Discover initiatives, find your people, take action.
         </p>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8">
-        <aside className="lg:w-56 shrink-0">
-          <div className="sticky top-20">
-            <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3">Topics</p>
-            <div className="space-y-1">
-              <FilterButton
-                label="All Topics"
-                count={topics.length}
-                active={selectedTopicId === null}
-                onClick={() => setSelectedTopicId(null)}
-              />
-              {loading ? (
-                <div className="py-2"><Spinner size="sm" /></div>
-              ) : topics.map(t => (
-                <FilterButton
-                  key={t.id}
-                  label={t.title}
-                  count={feedItems.filter(i => i.topicId === t.id).length}
-                  active={selectedTopicId === t.id}
-                  onClick={() => setSelectedTopicId(selectedTopicId === t.id ? null : t.id)}
-                />
-              ))}
-            </div>
+      {/* Mobile-only filter chips */}
+      <div className="lg:hidden shrink-0 mb-4 space-y-2">
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+          <MobileChip
+            label="All"
+            active={selectedTopicId === null}
+            onClick={() => setSelectedTopicId(null)}
+          />
+          {loading ? (
+            <div className="flex items-center px-2"><Spinner size="sm" /></div>
+          ) : topics.map(t => (
+            <MobileChip
+              key={t.id}
+              label={t.title}
+              active={selectedTopicId === t.id}
+              onClick={() => setSelectedTopicId(selectedTopicId === t.id ? null : t.id)}
+            />
+          ))}
+        </div>
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+          {(['all', 'group', 'resource', 'event', 'challenge'] as const).map(type => (
+            <MobileChip
+              key={type}
+              label={type === 'all' ? 'All types' : type.charAt(0).toUpperCase() + type.slice(1) + 's'}
+              active={typeFilter === type}
+              onClick={() => setTypeFilter(type)}
+              accent
+            />
+          ))}
+        </div>
+      </div>
 
-            <p className="text-xs text-zinc-500 uppercase tracking-wider mt-6 mb-3">Activity Type</p>
-            <div className="space-y-1">
-              {(['all', 'group', 'resource', 'event', 'challenge'] as const).map(type => (
-                <button
-                  key={type}
-                  onClick={() => setTypeFilter(type)}
-                  className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-all cursor-pointer border-l-2 ${
-                    typeFilter === type
-                      ? 'bg-zinc-800/80 text-zinc-100 border-l-emerald-500'
-                      : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/40 border-l-transparent'
-                  }`}
-                >
-                  {type === 'all' ? 'All activity' : type.charAt(0).toUpperCase() + type.slice(1) + 's'}
-                </button>
-              ))}
-            </div>
+      {/* Content row */}
+      <div className="flex flex-col lg:flex-row flex-1 min-h-0 gap-8 lg:pb-6">
+
+        {/* Desktop sidebar — hidden on mobile */}
+        <aside className="hidden lg:flex w-56 shrink-0 flex-col min-h-0">
+          <p className="text-xs text-zinc-500 uppercase tracking-wider mb-3 shrink-0">Topics</p>
+          <div className="space-y-1 overflow-y-auto flex-1 min-h-0 pr-1">
+            <FilterButton
+              label="All Topics"
+              count={topics.length}
+              active={selectedTopicId === null}
+              onClick={() => setSelectedTopicId(null)}
+            />
+            {loading ? (
+              <div className="py-2"><Spinner size="sm" /></div>
+            ) : topics.map(t => (
+              <FilterButton
+                key={t.id}
+                label={t.title}
+                count={feedItems.filter(i => i.topicId === t.id).length}
+                active={selectedTopicId === t.id}
+                onClick={() => setSelectedTopicId(selectedTopicId === t.id ? null : t.id)}
+              />
+            ))}
+          </div>
+
+          <p className="text-xs text-zinc-500 uppercase tracking-wider mt-5 mb-3 shrink-0">Activity Type</p>
+          <div className="space-y-1 shrink-0">
+            {(['all', 'group', 'resource', 'event', 'challenge'] as const).map(type => (
+              <button
+                key={type}
+                onClick={() => setTypeFilter(type)}
+                className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-all cursor-pointer border-l-2 ${
+                  typeFilter === type
+                    ? 'bg-zinc-800/80 text-zinc-100 border-l-emerald-500'
+                    : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/40 border-l-transparent'
+                }`}
+              >
+                {type === 'all' ? 'All activity' : type.charAt(0).toUpperCase() + type.slice(1) + 's'}
+              </button>
+            ))}
           </div>
         </aside>
 
-        <main className="flex-1 min-w-0">
+        {/* Main feed — scrolls independently on desktop, page scrolls on mobile */}
+        <main className="flex-1 min-h-0 lg:overflow-y-auto lg:pr-1 pb-8 lg:pb-0">
           {loading ? (
             <div className="flex justify-center py-16"><Spinner size="lg" /></div>
           ) : topicEntries.length === 0 ? (
             <EmptyFeed selectedTopicId={selectedTopicId} typeFilter={typeFilter} />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 py-0.5">
               {topicEntries.map(({ topic, items, totalCount }) => (
                 <TopicActivityCard
                   key={topic.id}
@@ -100,8 +136,28 @@ export function HomePage() {
             </div>
           )}
         </main>
+
       </div>
     </div>
+  )
+}
+
+function MobileChip({ label, active, onClick, accent }: {
+  label: string; active: boolean; onClick: () => void; accent?: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+        active
+          ? accent
+            ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
+            : 'bg-zinc-700 border-zinc-600 text-zinc-100'
+          : 'bg-zinc-800/60 border-zinc-700/60 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600'
+      }`}
+    >
+      {label}
+    </button>
   )
 }
 
@@ -133,7 +189,7 @@ function EmptyFeed({ selectedTopicId, typeFilter }: { selectedTopicId: string | 
       <p className="text-zinc-500 text-sm max-w-sm mx-auto">
         {filtered
           ? 'Try clearing your filters to see all topic activity.'
-          : 'Topics will appear here as they\'re created and populated.'}
+          : "Topics will appear here as they're created and populated."}
       </p>
       {!filtered && (
         <Link to="/topics" className="inline-flex items-center gap-1 mt-4 text-emerald-400 text-sm hover:text-emerald-300 transition-colors">

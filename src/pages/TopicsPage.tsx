@@ -21,7 +21,7 @@ export function TopicsPage() {
           <p className="text-zinc-500">No topics yet. Check back soon.</p>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {topics.map(t => <TopicCard key={t.id} topic={t} />)}
         </div>
       )}

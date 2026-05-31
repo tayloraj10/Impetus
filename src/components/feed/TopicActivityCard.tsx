@@ -44,6 +44,43 @@ function SparkleIcon({ className }: { className?: string }) {
   )
 }
 
+// --- Helpers ---
+
+function dominantStripeColor(topic: Topic): string {
+  const candidates = [
+    { count: topic.groupCount,     cls: 'bg-emerald-500' },
+    { count: topic.resourceCount,  cls: 'bg-blue-500' },
+    { count: topic.eventCount,     cls: 'bg-amber-500' },
+    { count: topic.challengeCount, cls: 'bg-purple-500' },
+  ]
+  const top = candidates.reduce((a, b) => b.count > a.count ? b : a)
+  return top.count > 0 ? top.cls : 'bg-zinc-700'
+}
+
+// Deterministic gradient per slug — classes must be full strings for Tailwind to pick them up
+const GRADIENTS = [
+  'from-emerald-900 to-teal-950',
+  'from-blue-900 to-indigo-950',
+  'from-amber-900 to-orange-950',
+  'from-purple-900 to-violet-950',
+  'from-rose-900 to-pink-950',
+  'from-cyan-900 to-sky-950',
+  'from-lime-900 to-green-950',
+  'from-fuchsia-900 to-purple-950',
+]
+
+function slugGradient(slug: string): string {
+  let h = 0
+  for (let i = 0; i < slug.length; i++) {
+    h = (Math.imul(31, h) + slug.charCodeAt(i)) | 0
+  }
+  return GRADIENTS[Math.abs(h) % GRADIENTS.length]
+}
+
+function isActiveNow(date: Date): boolean {
+  return Date.now() - date.getTime() < 2 * 60 * 60 * 1000
+}
+
 // --- Activity row config ---
 
 const typeStyle: Record<FeedItem['type'], { color: string; bg: string; label: string }> = {
@@ -86,32 +123,49 @@ interface TopicActivityCardProps {
 
 export function TopicActivityCard({ topic, items, totalCount }: TopicActivityCardProps) {
   const hasActivity = items.length > 0
+  const active = isActiveNow(topic.lastActivityAt)
+  const gradient = slugGradient(topic.slug)
 
   return (
     <div className="group bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-xl overflow-hidden transition-all duration-200 hover:-translate-y-px hover:shadow-lg hover:shadow-black/30">
 
-      {/* Topic header */}
+      {/* Dominant-component accent stripe */}
+      <div className={`h-0.5 ${dominantStripeColor(topic)}`} />
+
       <Link to={`/topic/${topic.slug}`} className="block">
-        {topic.imageUrl && (
-          <div className="relative h-32 overflow-hidden">
+
+        {/* Image or gradient placeholder — always shown */}
+        <div className="relative h-28 overflow-hidden">
+          {topic.imageUrl ? (
             <img
               src={topic.imageUrl}
               alt={topic.title}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/80 via-zinc-900/20 to-transparent" />
-          </div>
-        )}
+          ) : (
+            <div className={`w-full h-full bg-gradient-to-br ${gradient} transition-opacity duration-300 group-hover:opacity-80`} />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-zinc-900/90 via-zinc-900/30 to-transparent" />
+        </div>
+
         <div className="p-4 pb-3">
+          {/* Title + recency pulse */}
           <div className="flex items-start justify-between gap-3 mb-1.5">
             <h2 className="text-zinc-100 font-bold text-base leading-snug group-hover:text-emerald-400 transition-colors">
               {topic.title}
             </h2>
-            <span className="text-zinc-600 text-xs whitespace-nowrap flex-shrink-0 mt-0.5">
+            <span className="flex items-center gap-1.5 text-zinc-600 text-xs whitespace-nowrap flex-shrink-0 mt-0.5">
+              {active && (
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+                </span>
+              )}
               {formatTimeAgo(topic.lastActivityAt)}
             </span>
           </div>
-            <p className="text-zinc-400 text-sm line-clamp-2 leading-relaxed">{topic.description}</p>
+
+          <p className="text-zinc-400 text-sm line-clamp-2 leading-relaxed">{topic.description}</p>
 
           {/* Component stat chips */}
           <div className="flex flex-wrap gap-x-4 gap-y-1 mt-3">
@@ -140,6 +194,17 @@ export function TopicActivityCard({ topic, items, totalCount }: TopicActivityCar
               </span>
             )}
           </div>
+
+          {/* Tag pills */}
+          {topic.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {topic.tags.map(tag => (
+                <span key={tag} className="px-2 py-0.5 bg-zinc-800 border border-zinc-700/50 text-zinc-500 text-xs rounded-full">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
       </Link>
 
