@@ -18,13 +18,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     return onAuthChange(async (u) => {
       setUser(u)
-      setLoading(false)
-      if (u) {
-        const r = await getUserRole(u.uid)
-        setRole(r)
-      } else {
+      if (!u) {
         setRole('user')
+        setLoading(false)
+        return
       }
+      // resolve role async — loading stays true until role is known so role-gated
+      // UI doesn't flash the wrong state, but the popup closes immediately
+      const r = await getUserRole(u.uid)
+      setRole(r)
+      setLoading(false)
     })
   }, [])
 

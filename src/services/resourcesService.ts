@@ -89,3 +89,22 @@ export async function flagResource(resourceId: string) {
 export async function unflagResource(resourceId: string) {
   await updateDoc(doc(db, 'resources', resourceId), { flags: increment(-1) })
 }
+
+export function subscribePendingResources(callback: (resources: Resource[]) => void): Unsubscribe {
+  const q = query(
+    collection(db, 'resources'),
+    where('moderationStatus', '==', 'pending_review'),
+  )
+  return onSnapshot(q, (snap) => {
+    const resources = snap.docs.map(d => toResource(d.id, d.data()))
+    resources.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    callback(resources)
+  }, (err) => {
+    console.error('subscribePendingResources error:', err)
+    callback([])
+  })
+}
+
+export async function setResourceModerationStatus(id: string, status: import('../types').ModerationStatus) {
+  await updateDoc(doc(db, 'resources', id), { moderationStatus: status })
+}

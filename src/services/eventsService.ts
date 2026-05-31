@@ -94,3 +94,22 @@ export async function flagEvent(eventId: string) {
 export async function unflagEvent(eventId: string) {
   await updateDoc(doc(db, 'events', eventId), { flags: increment(-1) })
 }
+
+export function subscribePendingEvents(callback: (events: ImpetusEvent[]) => void): Unsubscribe {
+  const q = query(
+    collection(db, 'events'),
+    where('moderationStatus', '==', 'pending_review'),
+  )
+  return onSnapshot(q, (snap) => {
+    const events = snap.docs.map(d => toEvent(d.id, d.data()))
+    events.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    callback(events)
+  }, (err) => {
+    console.error('subscribePendingEvents error:', err)
+    callback([])
+  })
+}
+
+export async function setEventModerationStatus(id: string, status: import('../types').ModerationStatus) {
+  await updateDoc(doc(db, 'events', id), { moderationStatus: status })
+}

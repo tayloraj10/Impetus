@@ -77,6 +77,26 @@ export async function incrementTopicCount(topicId: string, field: 'groupCount' |
   })
 }
 
+export function subscribeAllTopics(callback: (topics: Topic[]) => void): Unsubscribe {
+  const q = query(
+    collection(db, 'topics'),
+    orderBy('createdAt', 'desc'),
+  )
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => toTopic(d.id, d.data())))
+  }, (err) => {
+    console.error('subscribeAllTopics error:', err)
+    callback([])
+  })
+}
+
+export async function updateTopic(id: string, data: Partial<Omit<Topic, 'id' | 'createdAt'>>) {
+  await updateDoc(doc(db, 'topics', id), {
+    ...data,
+    updatedAt: serverTimestamp(),
+  })
+}
+
 export async function suggestTopic(title: string, description: string, userId: string, displayName: string) {
   return addDoc(collection(db, 'topic_suggestions'), {
     title,

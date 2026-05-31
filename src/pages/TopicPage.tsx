@@ -74,6 +74,11 @@ export function TopicPage() {
 function TopicHeader({ topic }: { topic: Topic }) {
   return (
     <div className="mb-6">
+      {topic.imageUrl && (
+        <div className="w-full h-52 md:h-72 rounded-2xl overflow-hidden mb-6">
+          <img src={topic.imageUrl} alt={topic.title} className="w-full h-full object-cover" />
+        </div>
+      )}
       <div className="mb-2">
         <h1 className="text-3xl font-bold text-zinc-100 tracking-tight">{topic.title}</h1>
       </div>

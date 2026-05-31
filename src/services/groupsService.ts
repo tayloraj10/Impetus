@@ -94,3 +94,22 @@ export async function flagGroup(groupId: string) {
 export async function unflagGroup(groupId: string) {
   await updateDoc(doc(db, 'groups', groupId), { flags: increment(-1) })
 }
+
+export function subscribePendingGroups(callback: (groups: Group[]) => void): Unsubscribe {
+  const q = query(
+    collection(db, 'groups'),
+    where('moderationStatus', '==', 'pending_review'),
+  )
+  return onSnapshot(q, (snap) => {
+    const groups = snap.docs.map(d => toGroup(d.id, d.data()))
+    groups.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    callback(groups)
+  }, (err) => {
+    console.error('subscribePendingGroups error:', err)
+    callback([])
+  })
+}
+
+export async function setGroupModerationStatus(id: string, status: import('../types').ModerationStatus) {
+  await updateDoc(doc(db, 'groups', id), { moderationStatus: status, updatedAt: serverTimestamp() })
+}

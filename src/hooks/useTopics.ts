@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { subscribeTopics, subscribeTopic } from '../services/topicsService'
+import { subscribeTopics, subscribeTopic, subscribeAllTopics } from '../services/topicsService'
 import type { Topic } from '../types'
 
 export function useTopics() {
@@ -8,6 +8,21 @@ export function useTopics() {
 
   useEffect(() => {
     const unsub = subscribeTopics((data) => {
+      setTopics(data)
+      setLoading(false)
+    })
+    return unsub
+  }, [])
+
+  return { topics, loading }
+}
+
+export function useAllTopics() {
+  const [topics, setTopics] = useState<Topic[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const unsub = subscribeAllTopics((data) => {
       setTopics(data)
       setLoading(false)
     })

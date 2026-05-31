@@ -9,7 +9,8 @@ const provider = new GoogleAuthProvider()
 
 export async function signInWithGoogle(): Promise<void> {
   const result = await signInWithPopup(auth, provider)
-  await ensureUserProfile(result.user)
+  // fire-and-forget — don't block the popup closing on the Firestore write
+  ensureUserProfile(result.user)
 }
 
 export async function signOut(): Promise<void> {
@@ -38,5 +39,5 @@ async function ensureUserProfile(user: User): Promise<void> {
 export async function getUserRole(uid: string): Promise<'user' | 'moderator' | 'admin'> {
   const snap = await getDoc(doc(db, 'users', uid))
   if (!snap.exists()) return 'user'
-  return (snap.data().role as 'user' | 'moderator' | 'admin') ?? 'user'
+  return (snap.data()?.role as 'user' | 'moderator' | 'admin') ?? 'user'
 }
