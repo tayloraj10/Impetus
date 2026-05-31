@@ -39,6 +39,7 @@ export function AdminPage() {
   const { topics } = useAllTopics()
   const [createOpen, setCreateOpen] = useState(false)
   const [editTopic, setEditTopic] = useState<Topic | null>(null)
+  const topicMap = useMemo(() => Object.fromEntries(topics.map(t => [t.id, t.title])), [topics])
 
   if (role !== 'admin' && role !== 'moderator') {
     return (
@@ -51,7 +52,6 @@ export function AdminPage() {
   const isAdmin = role === 'admin'
   const activeTopics = topics.filter(t => t.status === 'active')
   const inactiveTopics = topics.filter(t => t.status !== 'active')
-  const topicMap = useMemo(() => Object.fromEntries(topics.map(t => [t.id, t.title])), [topics])
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
