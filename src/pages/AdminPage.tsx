@@ -1,7 +1,8 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useTopics } from '../hooks/useTopics'
 import { createTopic } from '../services/topicsService'
+import { uploadImage, topicImagePath } from '../services/storageService'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { Badge } from '../components/ui/Badge'
@@ -60,11 +61,27 @@ function CreateTopicModal({ open, onClose }: { open: boolean; onClose: () => voi
   const [slug, setSlug] = useState('')
   const [description, setDescription] = useState('')
   const [tags, setTags] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   function handleTitleChange(val: string) {
     setTitle(val)
     setSlug(val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''))
+  }
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImageFile(file)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  function clearImage() {
+    setImageFile(null)
+    setImagePreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -72,17 +89,22 @@ function CreateTopicModal({ open, onClose }: { open: boolean; onClose: () => voi
     if (!user) return
     setSubmitting(true)
     try {
+      let imageUrl: string | undefined
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile, topicImagePath(slug, imageFile))
+      }
       await createTopic({
         title,
         slug,
         description,
         tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+        ...(imageUrl ? { imageUrl } : {}),
         enabledComponents: [],
         status: 'active',
         createdBy: user.uid,
       })
       onClose()
-      setTitle(''); setSlug(''); setDescription(''); setTags('')
+      setTitle(''); setSlug(''); setDescription(''); setTags(''); clearImage()
     } finally {
       setSubmitting(false)
     }
@@ -109,6 +131,37 @@ function CreateTopicModal({ open, onClose }: { open: boolean; onClose: () => voi
           <span className="block text-xs text-zinc-400 mb-1">Tags (comma-separated)</span>
           <input value={tags} onChange={e => setTags(e.target.value)} className={inputClass} placeholder="environment, volunteer, community" />
         </label>
+        <div>
+          <span className="block text-xs text-zinc-400 mb-1">Cover Image</span>
+          {imagePreview ? (
+            <div className="relative w-full h-36 rounded-lg overflow-hidden border border-zinc-700">
+              <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={clearImage}
+                className="absolute top-2 right-2 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 rounded-full w-6 h-6 flex items-center justify-center text-xs leading-none"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full h-24 border border-dashed border-zinc-700 rounded-lg flex flex-col items-center justify-center gap-1 text-zinc-500 hover:border-zinc-500 hover:text-zinc-400 transition-colors text-sm"
+            >
+              <span className="text-lg">+</span>
+              <span>Upload image</span>
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="hidden"
+          />
+        </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="submit" disabled={submitting}>{submitting ? 'Creating...' : 'Create Topic'}</Button>

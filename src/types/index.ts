@@ -8,6 +8,7 @@ export interface Topic {
   slug: string
   description: string
   tags: string[]
+  imageUrl?: string
   enabledComponents: ComponentType[]
   status: 'active' | 'pending' | 'archived'
   createdBy: string
