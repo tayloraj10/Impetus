@@ -5,6 +5,7 @@ import { GroupsComponent } from '../components/topic-components/GroupsComponent'
 import { ResourcesComponent } from '../components/topic-components/ResourcesComponent'
 import { EventsComponent } from '../components/topic-components/EventsComponent'
 import { ChallengesComponent } from '../components/topic-components/ChallengesComponent'
+import { MapsComponent } from '../components/topic-components/MapsComponent'
 import { Badge } from '../components/ui/Badge'
 import { Spinner } from '../components/ui/Spinner'
 import type { ComponentType, Topic } from '../types'
@@ -14,6 +15,7 @@ const componentLabels: Record<ComponentType, string> = {
   resources: 'Resources',
   events: 'Events',
   challenges: 'Challenges',
+  maps: 'Map',
 }
 
 export function TopicPage() {
@@ -96,6 +98,7 @@ function StatsBar({ topic }: { topic: Topic }) {
     { label: 'Resources', value: topic.resourceCount, show: topic.enabledComponents.includes('resources') },
     { label: 'Events', value: topic.eventCount, show: topic.enabledComponents.includes('events') },
     { label: 'Challenges', value: topic.challengeCount, show: topic.enabledComponents.includes('challenges') },
+    { label: 'Pins', value: topic.mapPinCount, show: topic.enabledComponents.includes('maps') },
   ].filter(s => s.show)
 
   return (
@@ -116,6 +119,7 @@ function ComponentRenderer({ topic, activeTab }: { topic: Topic; activeTab: Comp
     case 'resources': return <ResourcesComponent topic={topic} />
     case 'events': return <EventsComponent topic={topic} />
     case 'challenges': return <ChallengesComponent topic={topic} />
+    case 'maps': return <MapsComponent topic={topic} />
     default: return null
   }
 }

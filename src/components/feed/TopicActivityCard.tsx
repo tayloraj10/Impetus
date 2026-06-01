@@ -88,6 +88,7 @@ const typeStyle: Record<FeedItem['type'], { color: string; bg: string; label: st
   resource:      { color: 'text-blue-400',    bg: 'bg-blue-500/15',    label: 'Resource' },
   event:         { color: 'text-amber-400',   bg: 'bg-amber-500/15',   label: 'Event' },
   challenge:     { color: 'text-purple-400',  bg: 'bg-purple-500/15',  label: 'Challenge' },
+  map_pin:       { color: 'text-teal-400',    bg: 'bg-teal-500/15',    label: 'Pin' },
   topic_created: { color: 'text-zinc-400',    bg: 'bg-zinc-700/30',    label: 'Topic' },
 }
 

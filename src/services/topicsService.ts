@@ -10,6 +10,7 @@ function toTopic(id: string, data: any): Topic {
   return {
     ...data,
     id,
+    mapPinCount: data.mapPinCount ?? 0,
     createdAt: data.createdAt?.toDate() ?? new Date(),
     updatedAt: data.updatedAt?.toDate() ?? new Date(),
     lastActivityAt: data.lastActivityAt?.toDate() ?? new Date(),
@@ -54,7 +55,7 @@ export function subscribeTopic(slug: string, callback: (topic: Topic | null) => 
   })
 }
 
-export async function createTopic(data: Omit<Topic, 'id' | 'createdAt' | 'updatedAt' | 'lastActivityAt' | 'activityScore' | 'groupCount' | 'resourceCount' | 'eventCount' | 'challengeCount'>) {
+export async function createTopic(data: Omit<Topic, 'id' | 'createdAt' | 'updatedAt' | 'lastActivityAt' | 'activityScore' | 'groupCount' | 'resourceCount' | 'eventCount' | 'challengeCount' | 'mapPinCount'>) {
   return addDoc(collection(db, 'topics'), {
     ...data,
     activityScore: 0,
@@ -62,13 +63,14 @@ export async function createTopic(data: Omit<Topic, 'id' | 'createdAt' | 'update
     resourceCount: 0,
     eventCount: 0,
     challengeCount: 0,
+    mapPinCount: 0,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     lastActivityAt: serverTimestamp(),
   })
 }
 
-export async function incrementTopicCount(topicId: string, field: 'groupCount' | 'resourceCount' | 'eventCount' | 'challengeCount') {
+export async function incrementTopicCount(topicId: string, field: 'groupCount' | 'resourceCount' | 'eventCount' | 'challengeCount' | 'mapPinCount') {
   await updateDoc(doc(db, 'topics', topicId), {
     [field]: increment(1),
     activityScore: increment(5),
@@ -77,7 +79,7 @@ export async function incrementTopicCount(topicId: string, field: 'groupCount' |
   })
 }
 
-export async function decrementTopicCount(topicId: string, field: 'groupCount' | 'resourceCount' | 'eventCount' | 'challengeCount') {
+export async function decrementTopicCount(topicId: string, field: 'groupCount' | 'resourceCount' | 'eventCount' | 'challengeCount' | 'mapPinCount') {
   await updateDoc(doc(db, 'topics', topicId), {
     [field]: increment(-1),
     updatedAt: serverTimestamp(),

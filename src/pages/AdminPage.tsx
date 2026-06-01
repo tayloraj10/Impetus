@@ -19,19 +19,24 @@ import {
 import {
   subscribeRemovedChallenges, restoreChallenge, deleteChallenge,
 } from '../services/challengesService'
+import {
+  subscribePendingMapPins, setMapPinModerationStatus,
+  subscribeRemovedMapPins, restoreMapPin, deleteMapPin,
+} from '../services/mapsService'
 import { uploadImage, topicImagePath } from '../services/storageService'
 import { seedAllTopics } from '../services/seedService'
 import { wipeContentCollections } from '../services/devService'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { formatTimeAgo, formatDate } from '../utils/time'
-import type { Topic, ComponentType, Group, Resource, ImpetusEvent, Challenge } from '../types'
+import type { Topic, ComponentType, Group, Resource, ImpetusEvent, Challenge, MapPin } from '../types'
 
 const ALL_COMPONENTS: { key: ComponentType; label: string }[] = [
   { key: 'groups', label: 'Groups' },
   { key: 'resources', label: 'Resources' },
   { key: 'events', label: 'Events' },
   { key: 'challenges', label: 'Challenges' },
+  { key: 'maps', label: 'Map' },
 ]
 
 export function AdminPage() {
@@ -215,6 +220,7 @@ function TopicRow({ topic: t, onEdit }: { topic: Topic; onEdit: () => void }) {
     t.resourceCount > 0 ? `${t.resourceCount} resource${t.resourceCount !== 1 ? 's' : ''}` : null,
     t.eventCount > 0 ? `${t.eventCount} event${t.eventCount !== 1 ? 's' : ''}` : null,
     t.challengeCount > 0 ? `${t.challengeCount} challenge${t.challengeCount !== 1 ? 's' : ''}` : null,
+    t.mapPinCount > 0 ? `${t.mapPinCount} pin${t.mapPinCount !== 1 ? 's' : ''}` : null,
   ].filter(Boolean)
 
   return (
@@ -628,25 +634,28 @@ function EditTopicModal({ topic, onClose }: { topic: Topic; onClose: () => void 
 
 // ── Moderation Queue ──────────────────────────────────────────────────────────
 
-type ModTab = 'groups' | 'resources' | 'events'
+type ModTab = 'groups' | 'resources' | 'events' | 'map_pins'
 
 function ModerationSection({ topicMap }: { topicMap: Record<string, string> }) {
   const [tab, setTab] = useState<ModTab>('groups')
   const [groups, setGroups] = useState<Group[]>([])
   const [resources, setResources] = useState<Resource[]>([])
   const [events, setEvents] = useState<ImpetusEvent[]>([])
+  const [mapPins, setMapPins] = useState<MapPin[]>([])
 
   useEffect(() => subscribePendingGroups(setGroups), [])
   useEffect(() => subscribePendingResources(setResources), [])
   useEffect(() => subscribePendingEvents(setEvents), [])
+  useEffect(() => subscribePendingMapPins(setMapPins), [])
 
-  const counts: Record<ModTab, number> = { groups: groups.length, resources: resources.length, events: events.length }
-  const total = groups.length + resources.length + events.length
+  const counts: Record<ModTab, number> = { groups: groups.length, resources: resources.length, events: events.length, map_pins: mapPins.length }
+  const total = groups.length + resources.length + events.length + mapPins.length
 
   const tabs: { key: ModTab; label: string }[] = [
     { key: 'groups', label: 'Groups' },
     { key: 'resources', label: 'Resources' },
     { key: 'events', label: 'Events' },
+    { key: 'map_pins', label: 'Pins' },
   ]
 
   return (
@@ -697,6 +706,11 @@ function ModerationSection({ topicMap }: { topicMap: Record<string, string> }) {
               events.length === 0
                 ? <p className="text-zinc-600 text-sm py-4 text-center">No pending events</p>
                 : events.map(e => <EventModerationCard key={e.id} event={e} topicName={topicMap[e.topicId]} />)
+            )}
+            {tab === 'map_pins' && (
+              mapPins.length === 0
+                ? <p className="text-zinc-600 text-sm py-4 text-center">No pending pins</p>
+                : mapPins.map(p => <MapPinModerationCard key={p.id} pin={p} topicName={topicMap[p.topicId]} />)
             )}
           </div>
         </>
@@ -1004,9 +1018,94 @@ function EventDetailModal({ event: e, topicName, open, onClose }: { event: Impet
   )
 }
 
+function MapPinModerationCard({ pin: p, topicName }: { pin: MapPin; topicName?: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <div
+        onClick={() => setOpen(true)}
+        className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 flex items-center gap-3 hover:border-zinc-700 transition-colors cursor-pointer"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+            <span className="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-medium">Map Pin</span>
+            {topicName && <span className="text-xs text-zinc-500">{topicName}</span>}
+          </div>
+          <p className="text-zinc-100 text-sm font-medium truncate">{p.name}</p>
+          <p className="text-zinc-600 text-xs mt-0.5">by {p.submittedByDisplayName ?? 'Unknown'} · {formatTimeAgo(p.createdAt)}</p>
+        </div>
+        <span className="text-zinc-500 text-xs shrink-0">Review →</span>
+      </div>
+      <MapPinDetailModal pin={p} topicName={topicName} open={open} onClose={() => setOpen(false)} />
+    </>
+  )
+}
+
+function MapPinDetailModal({ pin: p, topicName, open, onClose }: { pin: MapPin; topicName?: string; open: boolean; onClose: () => void }) {
+  const [acting, setActing] = useState<'approve' | 'reject' | null>(null)
+
+  async function act(action: 'approve' | 'reject') {
+    setActing(action)
+    try {
+      await setMapPinModerationStatus(p.id, action === 'approve' ? 'live' : 'rejected')
+      onClose()
+    } finally {
+      setActing(null)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Review Map Pin" size="lg">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-zinc-500 text-xs mb-1">Name</p>
+            <p className="text-zinc-100 font-semibold">{p.name}</p>
+          </div>
+          {topicName && (
+            <div>
+              <p className="text-zinc-500 text-xs mb-1">Topic</p>
+              <p className="text-zinc-300 text-sm">{topicName}</p>
+            </div>
+          )}
+        </div>
+        {p.description && (
+          <div>
+            <p className="text-zinc-500 text-xs mb-1">Description</p>
+            <p className="text-zinc-300 text-sm leading-relaxed">{p.description}</p>
+          </div>
+        )}
+        {p.address && (
+          <div>
+            <p className="text-zinc-500 text-xs mb-1">Address</p>
+            <p className="text-zinc-300 text-sm">{p.address}</p>
+          </div>
+        )}
+        <div>
+          <p className="text-zinc-500 text-xs mb-1">Coordinates</p>
+          <p className="text-zinc-300 text-sm font-mono">{p.coordinates.lat.toFixed(5)}, {p.coordinates.lng.toFixed(5)}</p>
+        </div>
+        {p.url && (
+          <div>
+            <p className="text-zinc-500 text-xs mb-1">Source URL</p>
+            <a href={p.url} target="_blank" rel="noopener noreferrer"
+              className="text-emerald-400 hover:text-emerald-300 text-sm underline break-all">
+              {p.url}
+            </a>
+          </div>
+        )}
+        <p className="text-zinc-600 text-xs pt-3 border-t border-zinc-800">
+          Submitted by {p.submittedByDisplayName ?? 'Unknown'} · {formatTimeAgo(p.createdAt)}
+        </p>
+        <ReviewActions acting={acting} onApprove={() => act('approve')} onReject={() => act('reject')} />
+      </div>
+    </Modal>
+  )
+}
+
 // ── Removed Content ───────────────────────────────────────────────────────────
 
-type RemovedTab = 'groups' | 'resources' | 'events' | 'challenges'
+type RemovedTab = 'groups' | 'resources' | 'events' | 'challenges' | 'map_pins'
 
 function RemovedSection({ topicMap }: { topicMap: Record<string, string> }) {
   const [tab, setTab] = useState<RemovedTab>('groups')
@@ -1014,25 +1113,29 @@ function RemovedSection({ topicMap }: { topicMap: Record<string, string> }) {
   const [resources, setResources] = useState<Resource[]>([])
   const [events, setEvents] = useState<ImpetusEvent[]>([])
   const [challenges, setChallenges] = useState<Challenge[]>([])
+  const [mapPins, setMapPins] = useState<MapPin[]>([])
 
   useEffect(() => subscribeRemovedGroups(setGroups), [])
   useEffect(() => subscribeRemovedResources(setResources), [])
   useEffect(() => subscribeRemovedEvents(setEvents), [])
   useEffect(() => subscribeRemovedChallenges(setChallenges), [])
+  useEffect(() => subscribeRemovedMapPins(setMapPins), [])
 
   const counts: Record<RemovedTab, number> = {
     groups: groups.length,
     resources: resources.length,
     events: events.length,
     challenges: challenges.length,
+    map_pins: mapPins.length,
   }
-  const total = groups.length + resources.length + events.length + challenges.length
+  const total = groups.length + resources.length + events.length + challenges.length + mapPins.length
 
   const tabs: { key: RemovedTab; label: string }[] = [
     { key: 'groups', label: 'Groups' },
     { key: 'resources', label: 'Resources' },
     { key: 'events', label: 'Events' },
     { key: 'challenges', label: 'Challenges' },
+    { key: 'map_pins', label: 'Pins' },
   ]
 
   return (
@@ -1130,6 +1233,22 @@ function RemovedSection({ topicMap }: { topicMap: Record<string, string> }) {
                     removedAt={c.removedAt}
                     onRestore={() => restoreChallenge(c.id)}
                     onDelete={() => deleteChallenge(c.id, c.topicId)}
+                  />
+                ))
+            )}
+            {tab === 'map_pins' && (
+              mapPins.length === 0
+                ? <p className="text-zinc-600 text-sm py-4 text-center">None</p>
+                : mapPins.map(p => (
+                  <RemovedCard
+                    key={p.id}
+                    type="Pin"
+                    title={p.name}
+                    topicName={topicMap[p.topicId]}
+                    removedByDisplayName={p.removedByDisplayName}
+                    removedAt={p.removedAt}
+                    onRestore={() => restoreMapPin(p.id)}
+                    onDelete={() => deleteMapPin(p.id, p.topicId)}
                   />
                 ))
             )}

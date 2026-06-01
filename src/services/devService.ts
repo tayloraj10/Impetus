@@ -1,7 +1,7 @@
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore'
 import { db } from '../config/firebase'
 
-const WIPEABLE = ['feed', 'groups', 'resources', 'events', 'challenges', 'challenge_submissions', 'topic_suggestions']
+const WIPEABLE = ['feed', 'groups', 'resources', 'events', 'challenges', 'challenge_submissions', 'topic_suggestions', 'map_pins']
 
 export async function wipeContentCollections(): Promise<void> {
   for (const col of WIPEABLE) {

@@ -1,4 +1,4 @@
-export type ComponentType = 'groups' | 'resources' | 'events' | 'challenges'
+export type ComponentType = 'groups' | 'resources' | 'events' | 'challenges' | 'maps'
 
 export type ModerationStatus = 'live' | 'pending_review' | 'pending_approval' | 'rejected' | 'removed'
 
@@ -21,11 +21,12 @@ export interface Topic {
   resourceCount: number
   eventCount: number
   challengeCount: number
+  mapPinCount: number
 }
 
 export interface FeedItem {
   id: string
-  type: 'group' | 'resource' | 'event' | 'challenge' | 'topic_created'
+  type: 'group' | 'resource' | 'event' | 'challenge' | 'map_pin' | 'topic_created'
   refId: string
   topicId: string
   topicTitle: string
@@ -197,4 +198,32 @@ export interface CreateEventInput {
   isVirtual: boolean
   externalUrl: string
   description?: string
+}
+
+export interface MapPin {
+  id: string
+  topicId: string
+  name: string
+  description?: string
+  address?: string
+  url?: string
+  coordinates: { lat: number; lng: number }
+  moderationStatus: ModerationStatus
+  submittedBy: string
+  submittedByDisplayName?: string
+  createdAt: Date
+  likes: number
+  flags: number
+  removedBy?: string
+  removedByDisplayName?: string
+  removedAt?: Date
+}
+
+export interface CreateMapPinInput {
+  topicId: string
+  name: string
+  description?: string
+  address?: string
+  url?: string
+  coordinates: { lat: number; lng: number }
 }
