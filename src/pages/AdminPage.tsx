@@ -220,7 +220,7 @@ function TopicRow({ topic: t, onEdit }: { topic: Topic; onEdit: () => void }) {
     t.resourceCount > 0 ? `${t.resourceCount} resource${t.resourceCount !== 1 ? 's' : ''}` : null,
     t.eventCount > 0 ? `${t.eventCount} event${t.eventCount !== 1 ? 's' : ''}` : null,
     t.challengeCount > 0 ? `${t.challengeCount} challenge${t.challengeCount !== 1 ? 's' : ''}` : null,
-    t.mapPinCount > 0 ? `${t.mapPinCount} pin${t.mapPinCount !== 1 ? 's' : ''}` : null,
+    t.mapPinCount > 0 ? `${t.mapPinCount} map pin${t.mapPinCount !== 1 ? 's' : ''}` : null,
   ].filter(Boolean)
 
   return (
@@ -655,7 +655,7 @@ function ModerationSection({ topicMap }: { topicMap: Record<string, string> }) {
     { key: 'groups', label: 'Groups' },
     { key: 'resources', label: 'Resources' },
     { key: 'events', label: 'Events' },
-    { key: 'map_pins', label: 'Pins' },
+    { key: 'map_pins', label: 'Map Pins' },
   ]
 
   return (
@@ -709,7 +709,7 @@ function ModerationSection({ topicMap }: { topicMap: Record<string, string> }) {
             )}
             {tab === 'map_pins' && (
               mapPins.length === 0
-                ? <p className="text-zinc-600 text-sm py-4 text-center">No pending pins</p>
+                ? <p className="text-zinc-600 text-sm py-4 text-center">No pending map pins</p>
                 : mapPins.map(p => <MapPinModerationCard key={p.id} pin={p} topicName={topicMap[p.topicId]} />)
             )}
           </div>
@@ -1135,7 +1135,7 @@ function RemovedSection({ topicMap }: { topicMap: Record<string, string> }) {
     { key: 'resources', label: 'Resources' },
     { key: 'events', label: 'Events' },
     { key: 'challenges', label: 'Challenges' },
-    { key: 'map_pins', label: 'Pins' },
+    { key: 'map_pins', label: 'Map Pins' },
   ]
 
   return (
@@ -1242,7 +1242,7 @@ function RemovedSection({ topicMap }: { topicMap: Record<string, string> }) {
                 : mapPins.map(p => (
                   <RemovedCard
                     key={p.id}
-                    type="Pin"
+                    type="Map Pin"
                     title={p.name}
                     topicName={topicMap[p.topicId]}
                     removedByDisplayName={p.removedByDisplayName}
