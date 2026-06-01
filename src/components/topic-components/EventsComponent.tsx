@@ -236,7 +236,7 @@ function AddEventModal({ open, onClose, topic }: { open: boolean; onClose: () =>
       <form onSubmit={handleSubmit} className="space-y-4">
         <label className="block">
           <span className="block text-xs text-zinc-400 mb-1">Event Name *</span>
-          <input required value={title} onChange={e => setTitle(e.target.value)} className={inputClass} placeholder="Annual River Cleanup" />
+          <input required value={title} onChange={e => setTitle(e.target.value)} className={inputClass} />
         </label>
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
@@ -245,7 +245,7 @@ function AddEventModal({ open, onClose, topic }: { open: boolean; onClose: () =>
           </label>
           <label className="block">
             <span className="block text-xs text-zinc-400 mb-1">Location</span>
-            <input value={location} onChange={e => setLocation(e.target.value)} className={inputClass} placeholder="Boston, MA" disabled={isVirtual} />
+            <input value={location} onChange={e => setLocation(e.target.value)} className={inputClass} disabled={isVirtual} />
           </label>
         </div>
         <label className="flex items-center gap-2 cursor-pointer">

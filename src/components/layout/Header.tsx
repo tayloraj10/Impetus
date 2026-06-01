@@ -31,6 +31,8 @@ export function Header() {
           <NavLink to="/" active={pathname === '/'}>Feed</NavLink>
           <NavLink to="/topics" active={pathname === '/topics'}>Topics</NavLink>
           <NavLink to="/groups" active={pathname === '/groups'}>Groups</NavLink>
+          <NavLink to="/map" active={pathname === '/map'}>Map</NavLink>
+          <NavLink to="/calendar" active={pathname === '/calendar'}>Calendar</NavLink>
           {(role === 'admin' || role === 'moderator') && (
             <NavLink to="/admin" active={pathname.startsWith('/admin')}>Admin</NavLink>
           )}

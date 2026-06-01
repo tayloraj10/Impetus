@@ -23,6 +23,18 @@ function toEvent(id: string, data: any): ImpetusEvent {
   }
 }
 
+export function subscribeAllEventsGlobal(callback: (events: ImpetusEvent[]) => void): Unsubscribe {
+  const q = query(
+    collection(db, 'events'),
+    where('moderationStatus', '==', 'live'),
+  )
+  return onSnapshot(q, (snap) => {
+    const events = snap.docs.map(d => toEvent(d.id, d.data()))
+    events.sort((a, b) => a.date.getTime() - b.date.getTime())
+    callback(events)
+  })
+}
+
 export function subscribeEvents(topicId: string, callback: (events: ImpetusEvent[]) => void): Unsubscribe {
   const q = query(
     collection(db, 'events'),

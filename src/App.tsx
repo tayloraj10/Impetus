@@ -8,6 +8,8 @@ import { AdminPage } from './pages/AdminPage'
 import { GroupsPage } from './pages/GroupsPage'
 import { GroupPage } from './pages/GroupPage'
 import { SearchPage } from './pages/SearchPage'
+import { MapPage } from './pages/MapPage'
+import { CalendarPage } from './pages/CalendarPage'
 
 export function App() {
   return (
@@ -21,6 +23,8 @@ export function App() {
             <Route path="/topic/:slug" element={<TopicPage />} />
             <Route path="/groups" element={<GroupsPage />} />
             <Route path="/groups/:id" element={<GroupPage />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/search" element={<SearchPage />} />
           </Routes>
