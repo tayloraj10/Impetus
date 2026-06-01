@@ -10,6 +10,7 @@ import { GroupPage } from './pages/GroupPage'
 import { SearchPage } from './pages/SearchPage'
 import { MapPage } from './pages/MapPage'
 import { CalendarPage } from './pages/CalendarPage'
+import { ProfilePage } from './pages/ProfilePage'
 
 export function App() {
   return (
@@ -27,6 +28,8 @@ export function App() {
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/search" element={<SearchPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/profile/:userId" element={<ProfilePage />} />
           </Routes>
         </div>
       </BrowserRouter>

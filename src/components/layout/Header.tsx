@@ -70,12 +70,19 @@ export function Header() {
           {!loading && (
             user ? (
               <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  {user.photoURL && (
+                <Link
+                  to={`/profile/${user.uid}`}
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                >
+                  {user.photoURL ? (
                     <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full" />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center text-xs font-bold text-zinc-400">
+                      {user.displayName?.charAt(0).toUpperCase()}
+                    </div>
                   )}
                   <span className="text-zinc-400 text-sm hidden sm:block">{user.displayName}</span>
-                </div>
+                </Link>
                 <Button variant="ghost" size="sm" onClick={signOut}>Sign out</Button>
               </div>
             ) : (
