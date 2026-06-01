@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import type { Group, CreateGroupInput, Topic } from '../../types'
 import { subscribeGroups, createGroup, likeGroup, unlikeGroup, flagGroup, unflagGroup, softDeleteGroup, deleteGroup } from '../../services/groupsService'
 import { uploadImage, groupLogoPath } from '../../services/storageService'
@@ -88,9 +88,13 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
   const { flagged, flag, unflag, canFlag } = useFlag(group.id)
   const canModerate = role === 'admin' || role === 'moderator'
   const isAdmin = role === 'admin'
+  const navigate = useNavigate()
 
   return (
-    <Link to={`/groups/${group.id}`} className="block bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-600 hover:bg-zinc-800/60 transition-colors">
+    <div
+      onClick={() => navigate(`/groups/${group.id}`)}
+      className="block bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-600 hover:bg-zinc-800/60 transition-colors cursor-pointer"
+    >
       <div className="flex items-start gap-3 mb-2">
         <GroupLogo group={group} />
         <div className="flex-1 min-w-0">
@@ -156,7 +160,7 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
           {group.links.twitter && <SocialLink href={socialUrl('twitter', group.links.twitter)} label="Twitter" />}
         </div>
       )}
-    </Link>
+    </div>
   )
 }
 

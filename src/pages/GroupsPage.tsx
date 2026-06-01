@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useTopics } from '../hooks/useTopics'
 import { subscribeAllGroups, likeGroup, unlikeGroup, flagGroup, unflagGroup } from '../services/groupsService'
 import { useLiked, useFlag } from '../hooks/useLiked'
@@ -98,9 +98,13 @@ function GroupCard({ group, topicTitle, topicSlug }: { group: Group; topicTitle?
   const hasLinks = Object.values(group.links ?? {}).some(Boolean)
   const { liked, toggle, canLike } = useLiked(group.id, 'verified')
   const { flagged, flag, unflag, canFlag } = useFlag(group.id)
+  const navigate = useNavigate()
 
   return (
-    <Link to={`/groups/${group.id}`} className="block bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-600 hover:bg-zinc-800/60 transition-colors flex flex-col">
+    <div
+      onClick={() => navigate(`/groups/${group.id}`)}
+      className="block bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-600 hover:bg-zinc-800/60 transition-colors flex flex-col cursor-pointer"
+    >
       <div className="flex items-start gap-3 mb-2">
         <GroupLogo group={group} />
         <div className="flex-1 min-w-0">
@@ -161,7 +165,7 @@ function GroupCard({ group, topicTitle, topicSlug }: { group: Group; topicTitle?
           {group.links.youtube && <SocialLink href={group.links.youtube} label="YouTube" />}
         </div>
       )}
-    </Link>
+    </div>
   )
 }
 
