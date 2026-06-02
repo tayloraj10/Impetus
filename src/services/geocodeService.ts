@@ -1,3 +1,5 @@
+import type { StructuredLocation } from '../types'
+
 export interface Coordinates {
   lat: number
   lng: number
@@ -26,16 +28,21 @@ export async function geocodeAddress(query: string): Promise<Coordinates | null>
   }
 }
 
-export function buildGroupLocationQuery(location: {
-  city?: string
-  state?: string
-  zipCode?: string
-  country?: string
-}): string {
+export function buildLocationQuery(location: StructuredLocation): string {
   const { city, state, zipCode, country } = location
   // Zip code is specific enough on its own (add country for international disambiguation)
   if (zipCode) return [zipCode, country].filter(Boolean).join(', ')
   // City needs at least one qualifier; country alone covers international entries without states
   if (city && (state || country)) return [city, state, country].filter(Boolean).join(', ')
+  // Country alone is geocodeable (for country-level resources/events)
+  if (country) return country
   return ''
+}
+
+export function formatLocation(location: StructuredLocation): string {
+  return [location.city, location.state, location.zipCode, location.country].filter(Boolean).join(', ')
+}
+
+export function isGeocodeable(location: StructuredLocation): boolean {
+  return buildLocationQuery(location) !== ''
 }

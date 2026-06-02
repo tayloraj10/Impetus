@@ -7,7 +7,7 @@ import { db } from '../config/firebase'
 import type { Group, CreateGroupInput } from '../types'
 import { createFeedItem, deleteFeedItemByRefId } from './feedService'
 import { incrementTopicCount, decrementTopicCount } from './topicsService'
-import { geocodeAddress, buildGroupLocationQuery } from './geocodeService'
+import { geocodeAddress, buildLocationQuery } from './geocodeService'
 
 function toGroup(id: string, data: any): Group {
   return {
@@ -59,7 +59,7 @@ export async function createGroup(
   topicTitle: string,
   topicSlug: string,
 ): Promise<void> {
-  const locationQuery = input.location ? buildGroupLocationQuery(input.location) : ''
+  const locationQuery = input.location ? buildLocationQuery(input.location) : ''
   const coordinates = locationQuery ? await geocodeAddress(locationQuery) : null
 
   const ref = await addDoc(collection(db, 'groups'), {

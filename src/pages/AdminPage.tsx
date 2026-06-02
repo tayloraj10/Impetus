@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react'
 import { useAuth } from '../hooks/useAuth'
 import { useAllTopics } from '../hooks/useTopics'
 import { createTopic, updateTopic } from '../services/topicsService'
+import { formatLocation } from '../services/geocodeService'
 import { useCategories } from '../hooks/useGroupCategories'
 import { addCategory, deleteCategory, seedDefaultCategories } from '../services/categoriesService'
 import {
@@ -810,7 +811,7 @@ function GroupDetailModal({ group: g, topicName, open, onClose }: { group: Group
     }
   }
 
-  const locationStr = [g.location?.city, g.location?.state, g.location?.country].filter(Boolean).join(', ')
+  const locationStr = g.location ? formatLocation(g.location) : ''
   const socialLinks = Object.entries(g.links ?? {}).filter((entry): entry is [string, string] => Boolean(entry[1]))
 
   return (
@@ -871,7 +872,11 @@ function GroupDetailModal({ group: g, topicName, open, onClose }: { group: Group
 }
 
 const resourceTypeLabel: Record<Resource['type'], string> = {
-  article: 'Article', video: 'Video', government: 'Gov', tool: 'Tool', guide: 'Guide', other: 'Other',
+  article: 'Article', video: 'Video', government: 'Gov', tool: 'Tool', guide: 'Guide', content_creator: 'Content Creator', other: 'Other',
+}
+
+function resourceTypeDisplay(r: Resource): string {
+  return r.type === 'other' && r.typeOther ? r.typeOther : resourceTypeLabel[r.type]
 }
 
 function ResourceModerationCard({ resource: r, topicName }: { resource: Resource; topicName?: string }) {
@@ -885,7 +890,7 @@ function ResourceModerationCard({ resource: r, topicName }: { resource: Resource
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
             <span className="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-medium">Resource</span>
-            <span className="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">{resourceTypeLabel[r.type]}</span>
+            <span className="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">{resourceTypeDisplay(r)}</span>
             {topicName && <span className="text-xs text-zinc-500">{topicName}</span>}
           </div>
           <p className="text-zinc-100 text-sm font-medium truncate">{r.title}</p>
@@ -921,7 +926,7 @@ function ResourceDetailModal({ resource: r, topicName, open, onClose }: { resour
           </div>
           <div>
             <p className="text-zinc-500 text-xs mb-1">Type</p>
-            <span className="text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded">{resourceTypeLabel[r.type]}</span>
+            <span className="text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded">{resourceTypeDisplay(r)}</span>
           </div>
         </div>
         {topicName && (
@@ -930,13 +935,21 @@ function ResourceDetailModal({ resource: r, topicName, open, onClose }: { resour
             <p className="text-zinc-300 text-sm">{topicName}</p>
           </div>
         )}
-        <div>
-          <p className="text-zinc-500 text-xs mb-1">URL</p>
-          <a href={r.url} target="_blank" rel="noopener noreferrer"
-            className="text-emerald-400 hover:text-emerald-300 text-sm underline break-all">
-            {r.url}
-          </a>
-        </div>
+        {r.url && (
+          <div>
+            <p className="text-zinc-500 text-xs mb-1">URL</p>
+            <a href={r.url} target="_blank" rel="noopener noreferrer"
+              className="text-emerald-400 hover:text-emerald-300 text-sm underline break-all">
+              {r.url}
+            </a>
+          </div>
+        )}
+        {r.location && (
+          <div>
+            <p className="text-zinc-500 text-xs mb-1">Location</p>
+            <p className="text-zinc-300 text-sm">{formatLocation(r.location)}</p>
+          </div>
+        )}
         {r.description && (
           <div>
             <p className="text-zinc-500 text-xs mb-1">Description</p>
@@ -1022,7 +1035,7 @@ function EventDetailModal({ event: e, topicName, open, onClose }: { event: Impet
           {e.location && (
             <div>
               <p className="text-zinc-500 text-xs mb-1">Location</p>
-              <p className="text-zinc-300 text-sm">{e.location}</p>
+              <p className="text-zinc-300 text-sm">{formatLocation(e.location)}</p>
             </div>
           )}
         </div>

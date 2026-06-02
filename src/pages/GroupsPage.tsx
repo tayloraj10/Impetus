@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useTopics } from '../hooks/useTopics'
 import { subscribeAllGroups, likeGroup, unlikeGroup, flagGroup, unflagGroup } from '../services/groupsService'
+import { formatLocation } from '../services/geocodeService'
 import { useLiked, useFlag } from '../hooks/useLiked'
 import { FlagButton } from '../components/ui/FlagButton'
 import { Tooltip } from '../components/ui/Tooltip'
@@ -152,7 +153,7 @@ function GroupCard({ group, topicTitle, topicSlug }: { group: Group; topicTitle?
 
       {group.location && (
         <p className="text-zinc-500 text-xs mb-2">
-          {[group.location.city, group.location.state, group.location.country].filter(Boolean).join(', ')}
+          {formatLocation(group.location)}
         </p>
       )}
 

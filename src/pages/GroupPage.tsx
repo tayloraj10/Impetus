@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { getGroup, likeGroup, unlikeGroup, flagGroup, unflagGroup } from '../services/groupsService'
+import { formatLocation } from '../services/geocodeService'
 import { useTopics } from '../hooks/useTopics'
 import { useLiked, useFlag } from '../hooks/useLiked'
 import { GroupLogo } from '../components/topic-components/GroupsComponent'
@@ -52,9 +53,7 @@ function GroupDetails({ group }: { group: Group }) {
   const { topics } = useTopics()
   const topic = topics.find(t => t.id === group.topicId) ?? null
 
-  const locationStr = group.location
-    ? [group.location.city, group.location.state, group.location.zipCode, group.location.country].filter(Boolean).join(', ')
-    : null
+  const locationStr = group.location ? formatLocation(group.location) : null
 
   const links = group.links ?? {}
 

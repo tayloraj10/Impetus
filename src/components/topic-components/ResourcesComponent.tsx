@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import type { Resource, CreateResourceInput, Topic } from '../../types'
+import type { Resource, CreateResourceInput, StructuredLocation, Topic } from '../../types'
+import { formatLocation } from '../../services/geocodeService'
 import {
   subscribeResources, createResource,
   likeResource, unlikeResource,
@@ -13,6 +14,7 @@ import { Button } from '../ui/Button'
 import { FlagButton } from '../ui/FlagButton'
 import { ModerateButtons } from '../ui/ModerateButtons'
 import { Tooltip } from '../ui/Tooltip'
+import { LocationInput } from '../ui/LocationInput'
 import { Modal } from '../ui/Modal'
 import { Spinner } from '../ui/Spinner'
 
@@ -22,7 +24,18 @@ const typeColors: Record<Resource['type'], 'blue' | 'amber' | 'green' | 'purple'
   government: 'green',
   tool: 'purple',
   guide: 'amber',
+  content_creator: 'blue',
   other: 'default',
+}
+
+const typeLabels: Record<Resource['type'], string> = {
+  article: 'Article',
+  video: 'Video',
+  government: 'Gov',
+  tool: 'Tool',
+  guide: 'Guide',
+  content_creator: 'Creator',
+  other: 'Other',
 }
 
 export function ResourcesComponent({ topic }: { topic: Topic }) {
@@ -97,7 +110,9 @@ function ResourceRow({ resource, role }: { resource: Resource; role: string | nu
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors">
       <div className="flex flex-wrap items-center gap-2 mb-1">
-        <Badge variant={typeColors[resource.type]}>{resource.type}</Badge>
+        <Badge variant={typeColors[resource.type]}>
+          {resource.type === 'other' && resource.typeOther ? resource.typeOther : typeLabels[resource.type]}
+        </Badge>
         {canModerate && (
           <div className="ml-auto">
             <ModerateButtons
@@ -107,17 +122,24 @@ function ResourceRow({ resource, role }: { resource: Resource; role: string | nu
           </div>
         )}
       </div>
-      <a
-        href={resource.url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-zinc-100 font-medium text-sm hover:text-emerald-400 transition-colors"
-        onClick={e => e.stopPropagation()}
-      >
-        {resource.title} ↗
-      </a>
+      {resource.url ? (
+        <a
+          href={resource.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-zinc-100 font-medium text-sm hover:text-emerald-400 transition-colors"
+          onClick={e => e.stopPropagation()}
+        >
+          {resource.title} ↗
+        </a>
+      ) : (
+        <p className="text-zinc-100 font-medium text-sm">{resource.title}</p>
+      )}
       {resource.description && (
         <p className="text-zinc-400 text-sm mt-1 leading-relaxed">{resource.description}</p>
+      )}
+      {resource.location && (
+        <p className="text-zinc-500 text-xs mt-1">📍 {formatLocation(resource.location)}</p>
       )}
       {resource.submittedByDisplayName && (
         <p className="text-zinc-600 text-xs mt-2">Added by {resource.submittedByDisplayName}</p>
@@ -185,6 +207,7 @@ function AddResourceModal({ open, onClose, topic }: { open: boolean; onClose: ()
     title: '',
     url: '',
     type: 'article',
+    location: {},
     description: '',
   })
   const [submitting, setSubmitting] = useState(false)
@@ -227,16 +250,15 @@ function AddResourceModal({ open, onClose, topic }: { open: boolean; onClose: ()
             required
             value={form.title}
             onChange={e => set('title', e.target.value)}
-            placeholder="How to start a cleanup group"
+            placeholder=""
             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"
           />
         </label>
         <label className="block">
-          <span className="block text-xs text-zinc-400 mb-1">URL *</span>
+          <span className="block text-xs text-zinc-400 mb-1">URL</span>
           <input
-            required
             type="url"
-            value={form.url}
+            value={form.url ?? ''}
             onChange={e => set('url', e.target.value)}
             placeholder="https://..."
             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"
@@ -246,7 +268,10 @@ function AddResourceModal({ open, onClose, topic }: { open: boolean; onClose: ()
           <span className="block text-xs text-zinc-400 mb-1">Type *</span>
           <select
             value={form.type}
-            onChange={e => set('type', e.target.value as Resource['type'])}
+            onChange={e => {
+              const t = e.target.value as Resource['type']
+              setForm(f => ({ ...f, type: t, typeOther: t !== 'other' ? undefined : f.typeOther }))
+            }}
             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500 transition-colors"
           >
             <option value="article">Article</option>
@@ -254,9 +279,30 @@ function AddResourceModal({ open, onClose, topic }: { open: boolean; onClose: ()
             <option value="government">Government / Official</option>
             <option value="tool">Tool</option>
             <option value="guide">Guide</option>
+            <option value="content_creator">Content Creator</option>
             <option value="other">Other</option>
           </select>
         </label>
+        {form.type === 'other' && (
+          <label className="block">
+            <span className="block text-xs text-zinc-400 mb-1">Specify type *</span>
+            <input
+              required
+              value={form.typeOther ?? ''}
+              onChange={e => set('typeOther', e.target.value)}
+              placeholder="e.g. Podcast, Newsletter, Dataset..."
+              maxLength={50}
+              className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors"
+            />
+          </label>
+        )}
+        <div>
+          <span className="block text-xs text-zinc-400 mb-2">Location</span>
+          <LocationInput
+            value={(form.location as StructuredLocation) ?? {}}
+            onChange={loc => setForm(f => ({ ...f, location: loc }))}
+          />
+        </div>
         <label className="block">
           <span className="block text-xs text-zinc-400 mb-1">Description</span>
           <textarea

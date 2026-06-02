@@ -26,6 +26,7 @@ function FlagIcon({ filled }: { filled: boolean }) {
 export function FlagButton({ flagged, onFlag, onUnflag, canFlag }: FlagButtonProps) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState('inaccurate')
+  const [otherText, setOtherText] = useState('')
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -78,13 +79,23 @@ export function FlagButton({ flagged, onFlag, onUnflag, canFlag }: FlagButtonPro
           <p className="text-xs text-zinc-400 font-medium mb-2">Reason for reporting</p>
           <select
             value={reason}
-            onChange={e => setReason(e.target.value)}
+            onChange={e => { setReason(e.target.value); setOtherText('') }}
             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-amber-500 transition-colors"
           >
             {FLAG_REASONS.map(r => (
               <option key={r.value} value={r.value}>{r.label}</option>
             ))}
           </select>
+          {reason === 'other' && (
+            <input
+              type="text"
+              value={otherText}
+              onChange={e => setOtherText(e.target.value)}
+              placeholder="Please describe the issue..."
+              maxLength={200}
+              className="w-full mt-2 bg-zinc-800 border border-zinc-700 rounded-lg px-2 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-amber-500 transition-colors"
+            />
+          )}
           <div className="flex items-center gap-2 mt-3">
             <button
               onClick={() => setOpen(false)}
@@ -93,8 +104,9 @@ export function FlagButton({ flagged, onFlag, onUnflag, canFlag }: FlagButtonPro
               Cancel
             </button>
             <button
-              onClick={() => { onFlag(reason); setOpen(false) }}
-              className="flex-1 text-xs bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors rounded-lg py-1 font-medium cursor-pointer"
+              disabled={reason === 'other' && !otherText.trim()}
+              onClick={() => { onFlag(reason === 'other' ? `other: ${otherText.trim()}` : reason); setOpen(false) }}
+              className="flex-1 text-xs bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 transition-colors rounded-lg py-1 font-medium cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
             >
               Report
             </button>

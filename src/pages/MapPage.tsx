@@ -3,8 +3,10 @@ import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import L from 'leaflet'
 import { subscribeAllEventsGlobal } from '../services/eventsService'
 import { subscribeAllGroups } from '../services/groupsService'
+import { subscribeAllResourcesGlobal } from '../services/resourcesService'
+import { formatLocation } from '../services/geocodeService'
 import { useTopics } from '../hooks/useTopics'
-import type { ImpetusEvent, Group } from '../types'
+import type { ImpetusEvent, Group, Resource } from '../types'
 
 const eventIcon = L.divIcon({
   html: `<div style="width:14px;height:14px;background:#f59e0b;border-radius:50%;border:2px solid #fcd34d;box-shadow:0 0 8px rgba(245,158,11,0.7)"></div>`,
@@ -22,18 +24,29 @@ const groupIcon = L.divIcon({
   popupAnchor: [0, -10],
 })
 
+const resourceIcon = L.divIcon({
+  html: `<div style="width:14px;height:14px;background:#3b82f6;border-radius:50%;border:2px solid #93c5fd;box-shadow:0 0 8px rgba(59,130,246,0.7)"></div>`,
+  className: '',
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+  popupAnchor: [0, -10],
+})
+
 export function MapPage() {
   const [events, setEvents] = useState<ImpetusEvent[]>([])
   const [groups, setGroups] = useState<Group[]>([])
+  const [resources, setResources] = useState<Resource[]>([])
   const { topics } = useTopics()
   const [selectedTopicId, setSelectedTopicId] = useState<string>('')
   const [showEvents, setShowEvents] = useState(true)
   const [showGroups, setShowGroups] = useState(true)
+  const [showResources, setShowResources] = useState(true)
 
   useEffect(() => {
     const unsub1 = subscribeAllEventsGlobal(setEvents)
     const unsub2 = subscribeAllGroups(setGroups)
-    return () => { unsub1(); unsub2() }
+    const unsub3 = subscribeAllResourcesGlobal(setResources)
+    return () => { unsub1(); unsub2(); unsub3() }
   }, [])
 
   const topicMap = useMemo(() => new Map(topics.map(t => [t.id, t])), [topics])
@@ -44,8 +57,11 @@ export function MapPage() {
   const filteredGroups = groups.filter(g =>
     g.coordinates && (!selectedTopicId || g.topicId === selectedTopicId)
   )
+  const filteredResources = resources.filter(r =>
+    r.coordinates && (!selectedTopicId || r.topicId === selectedTopicId)
+  )
 
-  const totalPins = (showEvents ? filteredEvents.length : 0) + (showGroups ? filteredGroups.length : 0)
+  const totalPins = (showEvents ? filteredEvents.length : 0) + (showGroups ? filteredGroups.length : 0) + (showResources ? filteredResources.length : 0)
 
   return (
     <div className="h-[calc(100vh-3.5rem)] flex flex-col">
@@ -92,6 +108,21 @@ export function MapPage() {
           </span>
         </button>
 
+        <button
+          onClick={() => setShowResources(v => !v)}
+          className={`flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-lg border transition-all ${
+            showResources
+              ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+              : 'bg-zinc-800 text-zinc-500 border-zinc-700 hover:border-zinc-600'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-blue-500 shrink-0" />
+          Resources
+          <span className={`text-xs ${showResources ? 'text-blue-500/70' : 'text-zinc-600'}`}>
+            {filteredResources.length}
+          </span>
+        </button>
+
         <span className="text-xs text-zinc-600 ml-auto">
           {totalPins} pin{totalPins !== 1 ? 's' : ''} on map
         </span>
@@ -103,7 +134,7 @@ export function MapPage() {
           <div className="absolute inset-0 flex items-center justify-center z-[400] pointer-events-none">
             <div className="bg-zinc-900/90 border border-zinc-800 rounded-xl px-5 py-4 text-sm text-zinc-500 text-center backdrop-blur-sm">
               No mapped locations yet.<br />
-              <span className="text-zinc-600 text-xs">Events and groups with location data will appear here.</span>
+              <span className="text-zinc-600 text-xs">Events, groups, and resources with location data will appear here.</span>
             </div>
           </div>
         )}
@@ -138,7 +169,7 @@ export function MapPage() {
                   )}
                   {group.location && (
                     <div className="text-xs text-zinc-600 mb-1.5">
-                      {[group.location.city, group.location.state, group.location.country].filter(Boolean).join(', ')}
+                      {formatLocation(group.location)}
                     </div>
                   )}
                   {group.links.website && (
@@ -175,7 +206,7 @@ export function MapPage() {
                     </p>
                   )}
                   {event.location && (
-                    <div className="text-xs text-zinc-600 mb-1.5">{event.location}</div>
+                    <div className="text-xs text-zinc-600 mb-1.5">{formatLocation(event.location)}</div>
                   )}
                   <a
                     href={event.externalUrl}
@@ -185,6 +216,41 @@ export function MapPage() {
                   >
                     Event details →
                   </a>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+
+          {showResources && filteredResources.map(resource => (
+            <Marker
+              key={resource.id}
+              position={[resource.coordinates!.lat, resource.coordinates!.lng]}
+              icon={resourceIcon}
+            >
+              <Popup className="impetus-map-popup">
+                <div className="text-sm min-w-[180px]">
+                  <div className="font-semibold text-zinc-100 leading-snug mb-1">{resource.title}</div>
+                  <div className="text-xs text-blue-400 mb-1.5">
+                    {topicMap.get(resource.topicId)?.title ?? 'Resource'}
+                  </div>
+                  {resource.description && (
+                    <p className="text-zinc-400 text-xs mb-2 line-clamp-3 leading-relaxed">
+                      {resource.description}
+                    </p>
+                  )}
+                  {resource.location && (
+                    <div className="text-xs text-zinc-600 mb-1.5">{formatLocation(resource.location)}</div>
+                  )}
+                  {resource.url && (
+                    <a
+                      href={resource.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                    >
+                      View resource →
+                    </a>
+                  )}
                 </div>
               </Popup>
             </Marker>

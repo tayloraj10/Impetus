@@ -31,11 +31,13 @@ function matchesGroup(g: Group, q: string): boolean {
 }
 
 function matchesResource(r: Resource, q: string): boolean {
-  return hit(r.title, q) || hit(r.description, q)
+  return hit(r.title, q) || hit(r.description, q) ||
+    hit(r.location?.city, q) || hit(r.location?.state, q) || hit(r.location?.country, q)
 }
 
 function matchesEvent(e: ImpetusEvent, q: string): boolean {
-  return hit(e.title, q) || hit(e.description, q) || hit(e.location, q)
+  return hit(e.title, q) || hit(e.description, q) ||
+    hit(e.location?.city, q) || hit(e.location?.state, q) || hit(e.location?.country, q)
 }
 
 function matchesChallenge(c: Challenge, q: string): boolean {

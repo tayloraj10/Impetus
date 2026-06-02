@@ -1,5 +1,12 @@
 export type ComponentType = 'groups' | 'resources' | 'events' | 'challenges' | 'maps'
 
+export interface StructuredLocation {
+  city?: string
+  state?: string
+  zipCode?: string
+  country?: string
+}
+
 export type ModerationStatus = 'live' | 'pending_review' | 'pending_approval' | 'rejected' | 'removed'
 
 export interface Topic {
@@ -50,12 +57,7 @@ export interface Group {
   description: string
   category?: string
   imageUrl?: string
-  location?: {
-    city?: string
-    state?: string
-    zipCode?: string
-    country?: string
-  }
+  location?: StructuredLocation
   coordinates?: { lat: number; lng: number }
   links: {
     website?: string
@@ -81,8 +83,11 @@ export interface Resource {
   id: string
   topicId: string
   title: string
-  url: string
-  type: 'article' | 'video' | 'government' | 'tool' | 'guide' | 'other'
+  url?: string
+  type: 'article' | 'video' | 'government' | 'tool' | 'guide' | 'content_creator' | 'other'
+  typeOther?: string
+  location?: StructuredLocation
+  coordinates?: { lat: number; lng: number }
   description?: string
   moderationStatus: ModerationStatus
   submittedBy: string
@@ -102,7 +107,7 @@ export interface ImpetusEvent {
   title: string
   date: Date
   endDate?: Date
-  location?: string
+  location?: StructuredLocation
   coordinates?: { lat: number; lng: number }
   isVirtual: boolean
   externalUrl: string
@@ -187,8 +192,10 @@ export interface Category {
 export interface CreateResourceInput {
   topicId: string
   title: string
-  url: string
+  url?: string
   type: Resource['type']
+  typeOther?: string
+  location?: StructuredLocation
   description?: string
 }
 
@@ -197,7 +204,7 @@ export interface CreateEventInput {
   title: string
   date: Date
   endDate?: Date
-  location?: string
+  location?: StructuredLocation
   isVirtual: boolean
   externalUrl: string
   description?: string

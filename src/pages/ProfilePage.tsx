@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useTopics } from '../hooks/useTopics'
+import { formatLocation } from '../services/geocodeService'
 import { getUserProfile, getUserContributions, type UserContributions } from '../services/userService'
 import type { UserProfile, Group, Resource, ImpetusEvent, ChallengeSubmission, Topic } from '../types'
 import { Spinner } from '../components/ui/Spinner'
@@ -262,7 +263,7 @@ function GroupCard({ group, topic }: { group: Group; topic?: Topic }) {
 }
 
 const RESOURCE_TYPE_LABEL: Record<Resource['type'], string> = {
-  article: 'Article', video: 'Video', government: 'Gov', tool: 'Tool', guide: 'Guide', other: 'Other',
+  article: 'Article', video: 'Video', government: 'Gov', tool: 'Tool', guide: 'Guide', content_creator: 'Content Creator', other: 'Other',
 }
 
 function ResourceCard({ resource, topic }: { resource: Resource; topic?: Topic }) {
@@ -271,15 +272,19 @@ function ResourceCard({ resource, topic }: { resource: Resource; topic?: Topic }
       <TypeBadge type="resource" />
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <a
-            href={resource.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-sm font-medium text-zinc-200 hover:text-emerald-400 transition-colors"
-          >
-            {resource.title}
-          </a>
-          <span className="text-xs text-zinc-600">{RESOURCE_TYPE_LABEL[resource.type]}</span>
+          {resource.url ? (
+            <a
+              href={resource.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm font-medium text-zinc-200 hover:text-emerald-400 transition-colors"
+            >
+              {resource.title}
+            </a>
+          ) : (
+            <span className="text-sm font-medium text-zinc-200">{resource.title}</span>
+          )}
+          <span className="text-xs text-zinc-600">{resource.type === 'other' && resource.typeOther ? resource.typeOther : RESOURCE_TYPE_LABEL[resource.type]}</span>
           <PendingBadge status={resource.moderationStatus} />
         </div>
         {resource.description && (
@@ -302,7 +307,7 @@ function EventCard({ event, topic }: { event: ImpetusEvent; topic?: Topic }) {
           <PendingBadge status={event.moderationStatus} />
         </div>
         <p className="text-xs text-zinc-500 mt-0.5">
-          {formatDate(event.date)}{event.location ? ` · ${event.location}` : ''}
+          {formatDate(event.date)}{event.location ? ` · ${formatLocation(event.location)}` : ''}
         </p>
         <TopicChip topic={topic} />
       </div>

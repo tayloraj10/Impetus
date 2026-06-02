@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import type { ImpetusEvent, CreateEventInput, Topic } from '../../types'
+import type { ImpetusEvent, CreateEventInput, StructuredLocation, Topic } from '../../types'
+import { formatLocation } from '../../services/geocodeService'
 import {
   subscribeEvents, createEvent,
   interestedEvent, uninterestedEvent,
@@ -11,6 +12,7 @@ import { useLiked, useFlag } from '../../hooks/useLiked'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { FlagButton } from '../ui/FlagButton'
+import { LocationInput } from '../ui/LocationInput'
 import { ModerateButtons } from '../ui/ModerateButtons'
 import { Tooltip } from '../ui/Tooltip'
 import { Modal } from '../ui/Modal'
@@ -112,7 +114,7 @@ function EventCard({ event, past = false, role }: { event: ImpetusEvent; past?: 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             {event.isVirtual && <Badge variant="blue" size="sm">Virtual</Badge>}
-            {event.location && <Badge variant="default" size="sm">{event.location}</Badge>}
+            {event.location && <Badge variant="default" size="sm">{formatLocation(event.location)}</Badge>}
             {canModerate && (
               <div className="ml-auto">
                 <ModerateButtons
@@ -195,11 +197,13 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   )
 }
 
+const EMPTY_LOCATION: StructuredLocation = { city: '', state: '', zipCode: '', country: '' }
+
 function AddEventModal({ open, onClose, topic }: { open: boolean; onClose: () => void; topic: Topic }) {
   const { user } = useAuth()
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
-  const [location, setLocation] = useState('')
+  const [location, setLocation] = useState<StructuredLocation>(EMPTY_LOCATION)
   const [isVirtual, setIsVirtual] = useState(false)
   const [url, setUrl] = useState('')
   const [description, setDescription] = useState('')
@@ -211,11 +215,12 @@ function AddEventModal({ open, onClose, topic }: { open: boolean; onClose: () =>
     if (!user || !date) return
     setSubmitting(true)
     try {
+      const hasLocation = !isVirtual && (location.city || location.state || location.zipCode || location.country)
       const input: CreateEventInput = {
         topicId: topic.id,
         title,
         date: new Date(date),
-        location: location || undefined,
+        location: hasLocation ? location : undefined,
         isVirtual,
         externalUrl: url,
         description: description || undefined,
@@ -248,20 +253,20 @@ function AddEventModal({ open, onClose, topic }: { open: boolean; onClose: () =>
           <span className="block text-xs text-zinc-400 mb-1">Event Name *</span>
           <input required value={title} onChange={e => setTitle(e.target.value)} className={inputClass} />
         </label>
-        <div className="grid grid-cols-2 gap-3">
-          <label className="block">
-            <span className="block text-xs text-zinc-400 mb-1">Date *</span>
-            <input required type="date" value={date} onChange={e => setDate(e.target.value)} className={inputClass} />
-          </label>
-          <label className="block">
-            <span className="block text-xs text-zinc-400 mb-1">Location</span>
-            <input value={location} onChange={e => setLocation(e.target.value)} className={inputClass} disabled={isVirtual} />
-          </label>
-        </div>
+        <label className="block">
+          <span className="block text-xs text-zinc-400 mb-1">Date *</span>
+          <input required type="date" value={date} onChange={e => setDate(e.target.value)} className={inputClass} />
+        </label>
         <label className="flex items-center gap-2 cursor-pointer">
           <input type="checkbox" checked={isVirtual} onChange={e => setIsVirtual(e.target.checked)} className="accent-emerald-500" />
           <span className="text-sm text-zinc-300">Virtual event</span>
         </label>
+        {!isVirtual && (
+          <div>
+            <span className="block text-xs text-zinc-400 mb-2">Location</span>
+            <LocationInput value={location} onChange={setLocation} />
+          </div>
+        )}
         <label className="block">
           <span className="block text-xs text-zinc-400 mb-1">Event URL *</span>
           <input required type="url" value={url} onChange={e => setUrl(e.target.value)} className={inputClass} placeholder="https://..." />

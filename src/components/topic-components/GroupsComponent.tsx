@@ -3,11 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import type { Group, CreateGroupInput, Topic } from '../../types'
 import { subscribeGroups, createGroup, likeGroup, unlikeGroup, flagGroup, unflagGroup, softDeleteGroup, deleteGroup } from '../../services/groupsService'
 import { uploadImage, groupLogoPath } from '../../services/storageService'
+import { formatLocation } from '../../services/geocodeService'
 import { useAuth } from '../../hooks/useAuth'
 import { useLiked, useFlag } from '../../hooks/useLiked'
 import { useCategories } from '../../hooks/useGroupCategories'
 import { Button } from '../ui/Button'
 import { FlagButton } from '../ui/FlagButton'
+import { LocationInput } from '../ui/LocationInput'
 import { ModerateButtons } from '../ui/ModerateButtons'
 import { Tooltip } from '../ui/Tooltip'
 import { Modal } from '../ui/Modal'
@@ -150,7 +152,7 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
           </div>
           {group.location && (
             <p className="text-zinc-500 text-xs mt-0.5">
-              {[group.location.city, group.location.state, group.location.zipCode, group.location.country].filter(Boolean).join(', ')}
+              {formatLocation(group.location)}
             </p>
           )}
         </div>
@@ -208,36 +210,6 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   )
 }
 
-function isGeocodeable(loc: CreateGroupInput['location']): boolean {
-  if (!loc) return false
-  if (loc.zipCode) return true
-  return !!(loc.city && (loc.state || loc.country))
-}
-
-function LocationMapHint({ location }: { location: CreateGroupInput['location'] }) {
-  const loc = location ?? {}
-  const hasAny = !!(loc.city || loc.state || loc.zipCode || loc.country)
-  if (isGeocodeable(loc)) {
-    return (
-      <p className="text-xs text-emerald-400 flex items-center gap-1.5">
-        <span>✓</span> Location set — this group will appear on the map
-      </p>
-    )
-  }
-  if (hasAny) {
-    return (
-      <p className="text-xs text-amber-400/80">
-        Add city + state/country, or zip code to have this group appear on the map
-      </p>
-    )
-  }
-  return (
-    <p className="text-xs text-zinc-500">
-      For map visibility: provide city + state/country, or zip code
-    </p>
-  )
-}
-
 function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () => void; topic: Topic }) {
   const { user } = useAuth()
   const { categories } = useCategories()
@@ -260,9 +232,6 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
   }
   function setLink(field: string, value: string) {
     setForm(f => ({ ...f, links: { ...f.links, [field]: value } }))
-  }
-  function setLoc(field: string, value: string) {
-    setForm(f => ({ ...f, location: { ...f.location, [field]: value } }))
   }
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -348,23 +317,10 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
         </div>
 
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="City">
-            <input value={form.location?.city ?? ''} onChange={e => setLoc('city', e.target.value)} />
-          </Field>
-          <Field label="State / Province">
-            <input value={form.location?.state ?? ''} onChange={e => setLoc('state', e.target.value)} />
-          </Field>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Field label="Zip / Postal Code">
-            <input value={form.location?.zipCode ?? ''} onChange={e => setLoc('zipCode', e.target.value)} />
-          </Field>
-          <Field label="Country">
-            <input value={form.location?.country ?? ''} onChange={e => setLoc('country', e.target.value)} />
-          </Field>
-        </div>
-        <LocationMapHint location={form.location} />
+        <LocationInput
+          value={form.location ?? {}}
+          onChange={loc => setForm(f => ({ ...f, location: loc }))}
+        />
 
         <div className="grid grid-cols-2 gap-2">
           <Field label="Website">

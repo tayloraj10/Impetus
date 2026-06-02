@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from 'react'
 import { subscribeAllEventsGlobal } from '../services/eventsService'
+import { formatLocation } from '../services/geocodeService'
 import { useTopics } from '../hooks/useTopics'
 import type { ImpetusEvent } from '../types'
 
@@ -278,7 +279,7 @@ export function CalendarPage() {
                       </span>
                     </div>
                     {e.location && (
-                      <div className="text-xs text-zinc-600 mt-1 truncate">{e.location}</div>
+                      <div className="text-xs text-zinc-600 mt-1 truncate">{formatLocation(e.location)}</div>
                     )}
                     {e.isVirtual && !e.location && (
                       <div className="text-xs text-zinc-600 mt-1">Virtual</div>

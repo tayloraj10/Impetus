@@ -7,6 +7,7 @@ import { db } from '../config/firebase'
 import type { Resource, CreateResourceInput } from '../types'
 import { createFeedItem, deleteFeedItemByRefId } from './feedService'
 import { incrementTopicCount, decrementTopicCount } from './topicsService'
+import { geocodeAddress, buildLocationQuery } from './geocodeService'
 
 function toResource(id: string, data: any): Resource {
   return {
@@ -31,6 +32,16 @@ export function subscribeResources(topicId: string, callback: (resources: Resour
   })
 }
 
+export function subscribeAllResourcesGlobal(callback: (resources: Resource[]) => void): Unsubscribe {
+  const q = query(
+    collection(db, 'resources'),
+    where('moderationStatus', '==', 'live'),
+  )
+  return onSnapshot(q, (snap) => {
+    callback(snap.docs.map(d => toResource(d.id, d.data())))
+  })
+}
+
 export async function createResource(
   input: CreateResourceInput,
   userId: string,
@@ -38,8 +49,13 @@ export async function createResource(
   topicTitle: string,
   topicSlug: string,
 ): Promise<void> {
+  const locationQuery = input.location ? buildLocationQuery(input.location) : ''
+  const coordinates = locationQuery ? await geocodeAddress(locationQuery) : null
+
+  const cleanInput = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined))
   const ref = await addDoc(collection(db, 'resources'), {
-    ...input,
+    ...cleanInput,
+    ...(coordinates ? { coordinates } : {}),
     moderationStatus: 'pending_review',
     submittedBy: userId,
     submittedByDisplayName: displayName,

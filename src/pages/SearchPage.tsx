@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useSearch } from '../hooks/useSearch'
+import { formatLocation } from '../services/geocodeService'
 import type { Topic, Group, Resource, ImpetusEvent, Challenge } from '../types'
 
 export function SearchPage() {
@@ -216,6 +217,7 @@ const resourceTypeLabel: Record<Resource['type'], string> = {
   government: 'Gov',
   tool: 'Tool',
   guide: 'Guide',
+  content_creator: 'Content Creator',
   other: 'Other',
 }
 
@@ -224,7 +226,7 @@ function ResourceResult({ resource, topicSlug, topicTitle }: { resource: Resourc
     <ResultCard to={topicSlug ? `/topic/${topicSlug}` : '/'}>
       <div className="flex items-start gap-3">
         <span className="text-xs bg-violet-500/15 text-violet-400 px-1.5 py-0.5 rounded shrink-0 mt-0.5">
-          {resourceTypeLabel[resource.type]}
+          {resource.type === 'other' && resource.typeOther ? resource.typeOther : resourceTypeLabel[resource.type]}
         </span>
         <div className="min-w-0">
           <p className="text-zinc-100 text-sm font-medium group-hover:text-emerald-400 transition-colors truncate">
@@ -252,7 +254,7 @@ function EventResult({ event, topicSlug, topicTitle }: { event: ImpetusEvent; to
         </p>
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           <span className="text-zinc-500 text-xs">{dateStr}</span>
-          {event.location && <span className="text-zinc-600 text-xs">· {event.location}</span>}
+          {event.location && <span className="text-zinc-600 text-xs">· {formatLocation(event.location)}</span>}
           {event.isVirtual && <span className="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">Virtual</span>}
           <TopicMeta topicTitle={topicTitle} topicSlug={topicSlug} />
         </div>
