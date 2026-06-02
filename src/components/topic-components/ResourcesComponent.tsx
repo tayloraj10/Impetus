@@ -29,7 +29,8 @@ export function ResourcesComponent({ topic }: { topic: Topic }) {
   const [resources, setResources] = useState<Resource[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
-  const { role } = useAuth()
+  const [showSignInMsg, setShowSignInMsg] = useState(false)
+  const { user, role } = useAuth()
 
   useEffect(() => {
     const unsub = subscribeResources(topic.id, (data) => {
@@ -39,17 +40,26 @@ export function ResourcesComponent({ topic }: { topic: Topic }) {
     return unsub
   }, [topic.id])
 
+  function handleAdd() {
+    if (!user) { setShowSignInMsg(true); return }
+    setShowSignInMsg(false)
+    setModalOpen(true)
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-zinc-400 text-sm">{resources.length} resource{resources.length !== 1 ? 's' : ''}</p>
-        <Button size="sm" onClick={() => setModalOpen(true)}>+ Add Resource</Button>
+        <Button size="sm" onClick={handleAdd}>+ Add Resource</Button>
       </div>
+      {showSignInMsg && !user && (
+        <p className="text-amber-400 text-xs mb-3 text-right">Sign in to add content</p>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12"><Spinner /></div>
       ) : resources.length === 0 ? (
-        <EmptyState onAdd={() => setModalOpen(true)} />
+        <EmptyState onAdd={handleAdd} />
       ) : (
         <div className="space-y-2">
           {resources.map(r => <ResourceRow key={r.id} resource={r} role={role} />)}

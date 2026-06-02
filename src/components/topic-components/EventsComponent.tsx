@@ -20,7 +20,8 @@ export function EventsComponent({ topic }: { topic: Topic }) {
   const [events, setEvents] = useState<ImpetusEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
-  const { role } = useAuth()
+  const [showSignInMsg, setShowSignInMsg] = useState(false)
+  const { user, role } = useAuth()
 
   useEffect(() => {
     const unsub = subscribeEvents(topic.id, (data) => {
@@ -30,6 +31,12 @@ export function EventsComponent({ topic }: { topic: Topic }) {
     return unsub
   }, [topic.id])
 
+  function handleAdd() {
+    if (!user) { setShowSignInMsg(true); return }
+    setShowSignInMsg(false)
+    setModalOpen(true)
+  }
+
   const now = Date.now()
   const upcoming = events.filter(e => e.date.getTime() >= now)
   const past = events.filter(e => e.date.getTime() < now)
@@ -38,13 +45,16 @@ export function EventsComponent({ topic }: { topic: Topic }) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-zinc-400 text-sm">{upcoming.length} upcoming · {past.length} past</p>
-        <Button size="sm" onClick={() => setModalOpen(true)}>+ Add Event</Button>
+        <Button size="sm" onClick={handleAdd}>+ Add Event</Button>
       </div>
+      {showSignInMsg && !user && (
+        <p className="text-amber-400 text-xs mb-3 text-right">Sign in to add content</p>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12"><Spinner /></div>
       ) : events.length === 0 ? (
-        <EmptyState onAdd={() => setModalOpen(true)} />
+        <EmptyState onAdd={handleAdd} />
       ) : (
         <div className="space-y-2">
           {upcoming.map(e => <EventCard key={e.id} event={e} role={role} />)}

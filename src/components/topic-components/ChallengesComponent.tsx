@@ -82,6 +82,7 @@ function ChevronDown({ open }: { open: boolean }) {
 function ChallengeCard({ challenge, ended = false, role }: { challenge: Challenge; ended?: boolean; role: string | null }) {
   const [actionOpen, setActionOpen] = useState(false)
   const [submissionsOpen, setSubmissionsOpen] = useState(false)
+  const [showSignInMsg, setShowSignInMsg] = useState(false)
   const { user } = useAuth()
   const { liked, toggle, canLike } = useLiked(challenge.id, 'upvoted')
   const { flagged, flag, unflag, canFlag } = useFlag(challenge.id)
@@ -122,8 +123,11 @@ function ChallengeCard({ challenge, ended = false, role }: { challenge: Challeng
       </div>
 
       <div className="flex items-center gap-3 mt-4 pt-3 border-t border-zinc-800/70">
-        {!ended && user && (
-          <Button size="sm" onClick={() => setActionOpen(true)}>Take Action</Button>
+        {!ended && (
+          <div className="flex flex-col gap-0.5">
+            <Button size="sm" onClick={() => { if (!user) { setShowSignInMsg(true); return } setActionOpen(true) }}>Take Action</Button>
+            {showSignInMsg && !user && <p className="text-amber-400 text-xs">Sign in to take action</p>}
+          </div>
         )}
         <Tooltip text={liked ? 'Remove upvote' : canLike ? 'Good challenge' : 'Sign in to vote'}>
           <button

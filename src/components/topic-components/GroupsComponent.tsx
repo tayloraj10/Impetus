@@ -17,6 +17,7 @@ export function GroupsComponent({ topic }: { topic: Topic }) {
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const [showSignInMsg, setShowSignInMsg] = useState(false)
   const { user, role } = useAuth()
 
   useEffect(() => {
@@ -27,19 +28,26 @@ export function GroupsComponent({ topic }: { topic: Topic }) {
     return unsub
   }, [topic.id])
 
+  function handleAdd() {
+    if (!user) { setShowSignInMsg(true); return }
+    setShowSignInMsg(false)
+    setModalOpen(true)
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
         <p className="text-zinc-400 text-sm">{groups.length} group{groups.length !== 1 ? 's' : ''} found</p>
-        <Button size="sm" onClick={() => user ? setModalOpen(true) : null}>
-          + Add Group
-        </Button>
+        <Button size="sm" onClick={handleAdd}>+ Add Group</Button>
       </div>
+      {showSignInMsg && !user && (
+        <p className="text-amber-400 text-xs mb-3 text-right">Sign in to add content</p>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-12"><Spinner /></div>
       ) : groups.length === 0 ? (
-        <EmptyState onAdd={() => setModalOpen(true)} />
+        <EmptyState onAdd={handleAdd} />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {groups.map(g => <GroupCard key={g.id} group={g} role={role} />)}
