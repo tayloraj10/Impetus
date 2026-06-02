@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { subscribeTopics, subscribeTopic, subscribeAllTopics } from '../services/topicsService'
+import { subscribeTopics, subscribeTopic, subscribeAllTopics, subscribeChildTopics } from '../services/topicsService'
 import type { Topic } from '../types'
 
 export function useTopics() {
@@ -30,6 +30,17 @@ export function useAllTopics() {
   }, [])
 
   return { topics, loading }
+}
+
+export function useChildTopics(parentTopicId: string) {
+  const [topics, setTopics] = useState<Topic[]>([])
+
+  useEffect(() => {
+    const unsub = subscribeChildTopics(parentTopicId, setTopics)
+    return unsub
+  }, [parentTopicId])
+
+  return { topics }
 }
 
 export function useTopic(slug: string) {

@@ -1,6 +1,6 @@
 import { useParams, Link } from 'react-router-dom'
 import { useState } from 'react'
-import { useTopic } from '../hooks/useTopics'
+import { useTopic, useChildTopics } from '../hooks/useTopics'
 import { GroupsComponent } from '../components/topic-components/GroupsComponent'
 import { ResourcesComponent } from '../components/topic-components/ResourcesComponent'
 import { EventsComponent } from '../components/topic-components/EventsComponent'
@@ -21,6 +21,7 @@ const componentLabels: Record<ComponentType, string> = {
 export function TopicPage() {
   const { slug } = useParams<{ slug: string }>()
   const { topic, loading } = useTopic(slug ?? '')
+  const { topics: childTopics } = useChildTopics(topic?.id ?? '')
   const [activeTab, setActiveTab] = useState<ComponentType | null>(null)
 
   if (loading) {
@@ -39,35 +40,87 @@ export function TopicPage() {
   }
 
   const currentTab = activeTab ?? topic.enabledComponents[0]
+  const hasTabs = topic.enabledComponents.length > 0
+  const hasChildren = childTopics.length > 0
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <Link to="/topics" className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors mb-6 inline-flex items-center gap-1">
-        ← Topics
-      </Link>
+      {topic.parentTopicId ? (
+        <Link to={`/topic/${topic.parentTopicSlug}`} className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors mb-6 inline-flex items-center gap-1">
+          ← {topic.parentTopicTitle}
+        </Link>
+      ) : (
+        <Link to="/topics" className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors mb-6 inline-flex items-center gap-1">
+          ← Topics
+        </Link>
+      )}
 
       <TopicHeader topic={topic} />
 
       <StatsBar topic={topic} />
 
-      <div className="mt-6">
-        <div className="flex gap-0.5 border-b border-zinc-800 mb-6">
-          {topic.enabledComponents.map(comp => (
-            <button
-              key={comp}
-              onClick={() => setActiveTab(comp)}
-              className={`px-4 py-2.5 text-sm font-medium transition-all cursor-pointer -mb-px border-b-2 rounded-t-md ${
-                currentTab === comp
-                  ? 'text-emerald-400 border-emerald-400 bg-emerald-500/5'
-                  : 'text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-zinc-800/50'
-              }`}
-            >
-              {componentLabels[comp]}
-            </button>
-          ))}
-        </div>
+      {hasChildren && <SubTopicsSection childTopics={childTopics} />}
 
-        <ComponentRenderer topic={topic} activeTab={currentTab} />
+      {hasTabs && (
+        <div className="mt-6">
+          <div className="flex gap-0.5 border-b border-zinc-800 mb-6">
+            {topic.enabledComponents.map(comp => (
+              <button
+                key={comp}
+                onClick={() => setActiveTab(comp)}
+                className={`px-4 py-2.5 text-sm font-medium transition-all cursor-pointer -mb-px border-b-2 rounded-t-md ${
+                  currentTab === comp
+                    ? 'text-emerald-400 border-emerald-400 bg-emerald-500/5'
+                    : 'text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-zinc-800/50'
+                }`}
+              >
+                {componentLabels[comp]}
+              </button>
+            ))}
+          </div>
+
+          <ComponentRenderer topic={topic} activeTab={currentTab} />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function SubTopicsSection({ childTopics }: { childTopics: Topic[] }) {
+  return (
+    <div className="mt-8 mb-2">
+      <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-4">
+        Sub-Topics ({childTopics.length})
+      </h2>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        {childTopics.map(child => (
+          <Link
+            key={child.id}
+            to={`/topic/${child.slug}`}
+            className="group bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl p-4 transition-colors"
+          >
+            <h3 className="text-zinc-100 font-semibold text-sm mb-1.5 group-hover:text-emerald-400 transition-colors">
+              {child.title}
+            </h3>
+            <p className="text-zinc-500 text-xs leading-relaxed line-clamp-2 mb-3">
+              {child.description}
+            </p>
+            <div className="flex flex-wrap gap-3">
+              {child.groupCount > 0 && (
+                <span className="text-zinc-600 text-xs">{child.groupCount} groups</span>
+              )}
+              {child.resourceCount > 0 && (
+                <span className="text-zinc-600 text-xs">{child.resourceCount} resources</span>
+              )}
+              {child.eventCount > 0 && (
+                <span className="text-zinc-600 text-xs">{child.eventCount} events</span>
+              )}
+              {child.challengeCount > 0 && (
+                <span className="text-zinc-600 text-xs">{child.challengeCount} challenges</span>
+              )}
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   )

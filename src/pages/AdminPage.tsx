@@ -98,9 +98,9 @@ export function AdminPage() {
 
       {isAdmin && (
         <>
-          <CreateTopicModal open={createOpen} onClose={() => setCreateOpen(false)} />
+          <CreateTopicModal open={createOpen} onClose={() => setCreateOpen(false)} topics={topics} />
           {editTopic && (
-            <EditTopicModal topic={editTopic} onClose={() => setEditTopic(null)} />
+            <EditTopicModal topic={editTopic} onClose={() => setEditTopic(null)} topics={topics} />
           )}
         </>
       )}
@@ -384,17 +384,19 @@ function ComponentToggles({
   )
 }
 
-function CreateTopicModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+function CreateTopicModal({ open, onClose, topics }: { open: boolean; onClose: () => void; topics: Topic[] }) {
   const { user } = useAuth()
   const [title, setTitle] = useState('')
   const [slug, setSlug] = useState('')
   const [description, setDescription] = useState('')
   const [tags, setTags] = useState('')
   const [components, setComponents] = useState<ComponentType[]>(['groups', 'resources', 'events', 'challenges'])
+  const [parentTopicId, setParentTopicId] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const parentTopics = topics.filter(t => t.status === 'active' && !t.parentTopicId)
 
   function handleTitleChange(val: string) {
     setTitle(val)
@@ -423,18 +425,20 @@ function CreateTopicModal({ open, onClose }: { open: boolean; onClose: () => voi
       if (imageFile) {
         imageUrl = await uploadImage(imageFile, topicImagePath(slug, imageFile))
       }
+      const parentTopic = parentTopics.find(t => t.id === parentTopicId)
       await createTopic({
         title,
         slug,
         description,
         tags: tags.split(',').map(t => t.trim()).filter(Boolean),
         ...(imageUrl ? { imageUrl } : {}),
+        ...(parentTopic ? { parentTopicId: parentTopic.id, parentTopicSlug: parentTopic.slug, parentTopicTitle: parentTopic.title } : {}),
         enabledComponents: components,
         status: 'active',
         createdBy: user.uid,
       })
       onClose()
-      setTitle(''); setSlug(''); setDescription(''); setTags(''); setComponents(['groups', 'resources', 'events', 'challenges']); clearImage()
+      setTitle(''); setSlug(''); setDescription(''); setTags(''); setComponents(['groups', 'resources', 'events', 'challenges']); setParentTopicId(''); clearImage()
     } finally {
       setSubmitting(false)
     }
@@ -459,6 +463,17 @@ function CreateTopicModal({ open, onClose }: { open: boolean; onClose: () => voi
           <span className="block text-xs text-zinc-400 mb-1">Tags (comma-separated)</span>
           <input value={tags} onChange={e => setTags(e.target.value)} className={inputClass} placeholder="environment, volunteer, community" />
         </label>
+        {parentTopics.length > 0 && (
+          <label className="block">
+            <span className="block text-xs text-zinc-400 mb-1">Parent Topic (optional)</span>
+            <select value={parentTopicId} onChange={e => setParentTopicId(e.target.value)} className={inputClass}>
+              <option value="">None</option>
+              {parentTopics.map(t => (
+                <option key={t.id} value={t.id}>{t.title}</option>
+              ))}
+            </select>
+          </label>
+        )}
         <ComponentToggles value={components} onChange={setComponents} />
         <div>
           <span className="block text-xs text-zinc-400 mb-1">Cover Image</span>
@@ -494,17 +509,19 @@ function CreateTopicModal({ open, onClose }: { open: boolean; onClose: () => voi
   )
 }
 
-function EditTopicModal({ topic, onClose }: { topic: Topic; onClose: () => void }) {
+function EditTopicModal({ topic, onClose, topics }: { topic: Topic; onClose: () => void; topics: Topic[] }) {
   const [title, setTitle] = useState(topic.title)
   const [slug, setSlug] = useState(topic.slug)
   const [description, setDescription] = useState(topic.description)
   const [tags, setTags] = useState(topic.tags.join(', '))
   const [components, setComponents] = useState<ComponentType[]>(topic.enabledComponents)
   const [status, setStatus] = useState<Topic['status']>(topic.status)
+  const [parentTopicId, setParentTopicId] = useState(topic.parentTopicId ?? '')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(topic.imageUrl ?? null)
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const parentTopics = topics.filter(t => t.status === 'active' && !t.parentTopicId && t.id !== topic.id)
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -530,6 +547,7 @@ function EditTopicModal({ topic, onClose }: { topic: Topic; onClose: () => void 
         imageUrl = undefined
       }
 
+      const parentTopic = parentTopics.find(t => t.id === parentTopicId)
       await updateTopic(topic.id, {
         title,
         slug,
@@ -538,6 +556,9 @@ function EditTopicModal({ topic, onClose }: { topic: Topic; onClose: () => void 
         enabledComponents: components,
         status,
         ...(imageUrl !== undefined ? { imageUrl } : {}),
+        ...(parentTopic
+          ? { parentTopicId: parentTopic.id, parentTopicSlug: parentTopic.slug, parentTopicTitle: parentTopic.title }
+          : { parentTopicId: undefined, parentTopicSlug: undefined, parentTopicTitle: undefined }),
       })
       onClose()
     } finally {
@@ -568,6 +589,15 @@ function EditTopicModal({ topic, onClose }: { topic: Topic; onClose: () => void 
         <label className="block">
           <span className="block text-xs text-zinc-400 mb-1">Tags (comma-separated)</span>
           <input value={tags} onChange={e => setTags(e.target.value)} className={inputClass} />
+        </label>
+        <label className="block">
+          <span className="block text-xs text-zinc-400 mb-1">Parent Topic (optional)</span>
+          <select value={parentTopicId} onChange={e => setParentTopicId(e.target.value)} className={inputClass}>
+            <option value="">None</option>
+            {parentTopics.map(t => (
+              <option key={t.id} value={t.id}>{t.title}</option>
+            ))}
+          </select>
         </label>
         <ComponentToggles value={components} onChange={setComponents} />
         <div>

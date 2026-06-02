@@ -17,10 +17,16 @@ function ts(daysAgo: number, hoursAgo = 0, minutesAgo = 0): Timestamp {
 
 async function findOrCreateTopic(slug: string, topicData: {
   title: string; description: string; category: string; tags: string[]
+  parentTopicId?: string; parentTopicSlug?: string; parentTopicTitle?: string
 }): Promise<{ id: string; title: string; slug: string }> {
   const snap = await getDocs(query(collection(db, 'topics'), where('slug', '==', slug)))
   if (!snap.empty) {
     const d = snap.docs[0]
+    const updates: Record<string, string> = {}
+    if (topicData.parentTopicId) updates.parentTopicId = topicData.parentTopicId
+    if (topicData.parentTopicSlug) updates.parentTopicSlug = topicData.parentTopicSlug
+    if (topicData.parentTopicTitle) updates.parentTopicTitle = topicData.parentTopicTitle
+    if (Object.keys(updates).length > 0) await updateDoc(d.ref, updates)
     return { id: d.id, title: d.data().title as string, slug }
   }
   const ref = await addDoc(collection(db, 'topics'), {
@@ -196,7 +202,11 @@ export async function seedTrashCleanups(userId: string, displayName: string): Pr
 // ─── AMAZON BOYCOTT ───────────────────────────────────────────────────────────
 // lastActivityAt target: ~20min ago (most recent in feed)
 
-export async function seedAmazonBoycott(userId: string, displayName: string): Promise<void> {
+export async function seedAmazonBoycott(
+  userId: string,
+  displayName: string,
+  parent?: { id: string; slug: string; title: string },
+): Promise<void> {
   SEED_USER = userId
   SEED_NAME = displayName || 'Admin'
 
@@ -205,6 +215,7 @@ export async function seedAmazonBoycott(userId: string, displayName: string): Pr
     description: 'Coordinating consumer campaigns against Amazon\'s labor practices, anti-competitive behavior, and worker rights violations. Finding alternatives and supporting the workers organizing inside.',
     category: 'Consumer Rights',
     tags: ['boycott', 'corporate-accountability', 'workers-rights', 'consumer-activism'],
+    ...(parent ? { parentTopicId: parent.id, parentTopicSlug: parent.slug, parentTopicTitle: parent.title } : {}),
   })
   await wipeTopic(topicId)
   const topicSlug = 'amazon-boycott'
@@ -1162,10 +1173,326 @@ export async function seedEthicalAI(userId: string, displayName: string): Promis
   })
 }
 
+// ─── BOYCOTTS (parent + children) ─────────────────────────────────────────────
+
+export async function seedBoycotts(userId: string, displayName: string): Promise<void> {
+  SEED_USER = userId
+  SEED_NAME = displayName || 'Admin'
+
+  // ── Parent topic ──
+  const { id: parentId, title: parentTitle } = await findOrCreateTopic('boycotts', {
+    title: 'Boycotts',
+    description: 'Tracking and coordinating active consumer boycott campaigns. Find what\'s being boycotted, why, and how to participate — plus alternatives to the brands and products you\'re stepping away from.',
+    category: 'Consumer Rights',
+    tags: ['boycott', 'consumer-activism', 'corporate-accountability'],
+  })
+  await wipeTopic(parentId)
+  const parentSlug = 'boycotts'
+
+  const parentResources = [
+    {
+      topicId: parentId, title: 'How Consumer Boycotts Work — And When They Don\'t',
+      url: 'https://www.vox.com',
+      type: 'article',
+      description: 'Analysis of boycott history and effectiveness: the psychology of consumer activism and which conditions make campaigns succeed.',
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 44, flags: 0, createdAt: ts(0, 0, 15),
+    },
+    {
+      topicId: parentId, title: 'Good On You — Ethical Brand Ratings',
+      url: 'https://goodonyou.eco',
+      type: 'tool',
+      description: 'Rates fashion and consumer brands on environmental impact, labor rights, and animal welfare. Great for finding alternatives.',
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 31, flags: 0, createdAt: ts(0, 1),
+    },
+    {
+      topicId: parentId, title: 'Behind the Brands — Oxfam Scorecard',
+      url: 'https://www.oxfamamerica.org/explore/issues/food-and-hunger/behind-the-brands/',
+      type: 'tool',
+      description: 'Oxfam scorecard rating the 10 largest food and beverage corporations on social and environmental policies.',
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 27, flags: 0, createdAt: ts(0, 2),
+    },
+  ]
+
+  const parentChallenge = {
+    topicId: parentId, title: 'Pick One, Skip One — 30 Days',
+    description: 'Choose one active boycott from the campaigns below and commit to avoiding that brand or product for 30 days. Document your alternatives.',
+    actionPrompt: 'Share which boycott you joined, what you\'re avoiding, and what you\'re using instead.',
+    type: 'individual',
+    moderationStatus: 'active', createdBy: SEED_USER,
+    participantCount: 521, createdAt: ts(1),
+  }
+
+  const [parentResourceRefs, parentChallengeRef] = await Promise.all([
+    Promise.all(parentResources.map(r => addDoc(collection(db, 'resources'), r))),
+    addDoc(collection(db, 'challenges'), parentChallenge),
+  ])
+
+  const parentMostRecentTs = ts(0, 0, 15)
+  const parentFeedItems = [
+    { type: 'resource', refId: parentResourceRefs[0].id, likes: 44, createdAt: ts(0, 0, 15), title: parentResources[0].title, description: parentResources[0].description, url: parentResources[0].url },
+    { type: 'resource', refId: parentResourceRefs[1].id, likes: 31, createdAt: ts(0, 1),     title: parentResources[1].title, description: parentResources[1].description, url: parentResources[1].url },
+    { type: 'resource', refId: parentResourceRefs[2].id, likes: 27, createdAt: ts(0, 2),     title: parentResources[2].title, description: parentResources[2].description, url: parentResources[2].url },
+    { type: 'challenge', refId: parentChallengeRef.id,  likes: 0,  createdAt: ts(1),         title: parentChallenge.title,    description: parentChallenge.description },
+  ].map(fi => ({ ...fi, topicId: parentId, topicTitle: parentTitle, topicSlug: parentSlug, submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME }))
+
+  await Promise.all(parentFeedItems.map(fi => addDoc(collection(db, 'feed'), fi)))
+  await updateDoc(doc(db, 'topics', parentId), {
+    enabledComponents: ['resources', 'challenges'],
+    groupCount: 0,
+    resourceCount: parentResources.length,
+    eventCount: 0,
+    challengeCount: 1,
+    activityScore: 100,
+    lastActivityAt: parentMostRecentTs,
+    updatedAt: parentMostRecentTs,
+  })
+
+  const parent = { id: parentId, slug: parentSlug, title: parentTitle }
+
+  // ── Child: Amazon Boycott ──
+  await seedAmazonBoycott(userId, displayName, parent)
+
+  // ── Child: Tesla Boycott ──
+  const { id: teslaId, title: teslaTitle } = await findOrCreateTopic('tesla-boycott', {
+    title: 'Tesla Boycott',
+    description: 'Consumer campaigns stepping away from Tesla and SpaceX products in response to Elon Musk\'s political activity and workforce treatment. A growing EV market means real alternatives exist.',
+    category: 'Consumer Rights',
+    tags: ['boycott', 'tesla', 'elon-musk', 'consumer-activism', 'electric-vehicles'],
+    parentTopicId: parentId, parentTopicSlug: parentSlug, parentTopicTitle: parentTitle,
+  })
+  await wipeTopic(teslaId)
+  const teslaSlug = 'tesla-boycott'
+
+  const teslaGroups = [
+    {
+      topicId: teslaId, name: 'Don\'t Buy Tesla Alliance',
+      category: 'Grassroots / Community',
+      description: 'Consumer coalition coordinating boycott actions and tracking Tesla sales impacts. Maintains a directory of EV alternatives with side-by-side comparisons.',
+      location: {},
+      links: { instagram: 'https://instagram.com/dontbuytesl' },
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 76, flags: 0, createdAt: ts(0, 0, 25), updatedAt: ts(0, 0, 25),
+    },
+    {
+      topicId: teslaId, name: 'EV Owners for Accountability',
+      category: 'Grassroots / Community',
+      description: 'Network of current and former EV owners — including ex-Tesla owners who have switched — sharing experiences and helping others make the transition.',
+      location: {},
+      links: { website: 'https://evownersforaccountability.org' },
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 51, flags: 0, createdAt: ts(0, 1),     updatedAt: ts(0, 1),
+    },
+  ]
+
+  const teslaResources = [
+    {
+      topicId: teslaId, title: 'Tesla Alternatives: Every EV Worth Considering in 2026',
+      url: 'https://www.caranddriver.com',
+      type: 'guide',
+      description: 'Comprehensive guide to non-Tesla EVs by price range, range, and use case. Updated quarterly.',
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 63, flags: 0, createdAt: ts(0, 1, 30),
+    },
+    {
+      topicId: teslaId, title: 'The DOGE Effect: How Musk\'s Political Role Reshaped Tesla Buyers',
+      url: 'https://www.nytimes.com',
+      type: 'article',
+      description: 'Analysis of Tesla\'s sales slump and customer sentiment shift following Musk\'s involvement in government.',
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 48, flags: 0, createdAt: ts(0, 3),
+    },
+    {
+      topicId: teslaId, title: 'Tesla Worker Safety Record — OSHA Data',
+      url: 'https://www.osha.gov',
+      type: 'government',
+      description: 'OSHA inspection records and injury rate data for Tesla manufacturing facilities.',
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 29, flags: 0, createdAt: ts(0, 5),
+    },
+  ]
+
+  const teslaEvents = [
+    {
+      topicId: teslaId, title: 'EV Alternatives Showcase — Virtual',
+      date: Timestamp.fromDate(new Date('2026-06-14T14:00:00')),
+      location: 'Virtual (Zoom)',
+      isVirtual: true,
+      externalUrl: 'https://evownersforaccountability.org/events',
+      description: 'Live walkthroughs of Rivian R2, Chevy Equinox EV, Kia EV6, and VW ID.4 with owner Q&A.',
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      createdAt: ts(1),
+    },
+  ]
+
+  const teslaChallenge = {
+    topicId: teslaId, title: 'Test Drive a Non-Tesla EV',
+    description: 'Visit a dealership and test drive any non-Tesla EV. Share your impressions — is it a viable alternative?',
+    actionPrompt: 'Share which car you drove, your honest reaction, and whether it could replace a Tesla for your needs.',
+    type: 'individual',
+    moderationStatus: 'active', createdBy: SEED_USER,
+    participantCount: 188, createdAt: ts(0, 8),
+  }
+
+  const [teslaGroupRefs, teslaResourceRefs, teslaEventRefs, teslaChallengeRef] = await Promise.all([
+    Promise.all(teslaGroups.map(g => addDoc(collection(db, 'groups'), g))),
+    Promise.all(teslaResources.map(r => addDoc(collection(db, 'resources'), r))),
+    Promise.all(teslaEvents.map(e => addDoc(collection(db, 'events'), e))),
+    addDoc(collection(db, 'challenges'), teslaChallenge),
+  ])
+
+  const teslaMostRecentTs = ts(0, 0, 25)
+  const teslaFeedItems = [
+    { type: 'group',    refId: teslaGroupRefs[0].id,    likes: 76, createdAt: ts(0, 0, 25), title: teslaGroups[0].name,      description: teslaGroups[0].description },
+    { type: 'group',    refId: teslaGroupRefs[1].id,    likes: 51, createdAt: ts(0, 1),     title: teslaGroups[1].name,      description: teslaGroups[1].description },
+    { type: 'resource', refId: teslaResourceRefs[0].id, likes: 63, createdAt: ts(0, 1, 30), title: teslaResources[0].title,  description: teslaResources[0].description, url: teslaResources[0].url },
+    { type: 'resource', refId: teslaResourceRefs[1].id, likes: 48, createdAt: ts(0, 3),     title: teslaResources[1].title,  description: teslaResources[1].description, url: teslaResources[1].url },
+    { type: 'resource', refId: teslaResourceRefs[2].id, likes: 29, createdAt: ts(0, 5),     title: teslaResources[2].title,  description: teslaResources[2].description, url: teslaResources[2].url },
+    { type: 'challenge', refId: teslaChallengeRef.id,   likes: 0,  createdAt: ts(0, 8),     title: teslaChallenge.title,     description: teslaChallenge.description },
+    { type: 'event',    refId: teslaEventRefs[0].id,    likes: 0,  createdAt: ts(1),         title: teslaEvents[0].title,     description: teslaEvents[0].description, url: teslaEvents[0].externalUrl },
+  ].map(fi => ({ ...fi, topicId: teslaId, topicTitle: teslaTitle, topicSlug: teslaSlug, submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME }))
+
+  await Promise.all(teslaFeedItems.map(fi => addDoc(collection(db, 'feed'), fi)))
+  await updateDoc(doc(db, 'topics', teslaId), {
+    enabledComponents: ['groups', 'resources', 'events', 'challenges'],
+    groupCount: teslaGroups.length,
+    resourceCount: teslaResources.length,
+    eventCount: teslaEvents.length,
+    challengeCount: 1,
+    activityScore: 175,
+    lastActivityAt: teslaMostRecentTs,
+    updatedAt: teslaMostRecentTs,
+  })
+
+  // ── Child: Fast Fashion Boycott ──
+  const { id: fashionId, title: fashionTitle } = await findOrCreateTopic('fast-fashion-boycott', {
+    title: 'Fast Fashion Boycott',
+    description: 'Stepping away from disposable fashion brands to protect garment workers, reduce textile waste, and push back against the cycle of cheap, quickly-discarded clothing.',
+    category: 'Consumer Rights',
+    tags: ['boycott', 'fashion', 'sustainability', 'workers-rights', 'consumer-activism'],
+    parentTopicId: parentId, parentTopicSlug: parentSlug, parentTopicTitle: parentTitle,
+  })
+  await wipeTopic(fashionId)
+  const fashionSlug = 'fast-fashion-boycott'
+
+  const fashionGroups = [
+    {
+      topicId: fashionId, name: 'Fashion Revolution',
+      category: 'Nonprofit',
+      description: 'Global movement demanding transparency from fashion brands. Known for #WhoMadeMyClothes campaign. Active in 90+ countries.',
+      location: { city: 'London', country: 'UK' },
+      links: { website: 'https://www.fashionrevolution.org', instagram: 'https://instagram.com/fash_rev' },
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 95, flags: 0, createdAt: ts(0, 4), updatedAt: ts(0, 4),
+    },
+    {
+      topicId: fashionId, name: 'Remake',
+      category: 'Nonprofit',
+      description: 'Advocacy org fighting for living wages and safe conditions for the 80% of garment workers who are women. Campaigns, petitions, and brand scorecards.',
+      location: { city: 'San Francisco', state: 'CA', country: 'US' },
+      links: { website: 'https://remake.world', instagram: 'https://instagram.com/remakeourworld' },
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 72, flags: 0, createdAt: ts(0, 6), updatedAt: ts(0, 6),
+    },
+    {
+      topicId: fashionId, name: 'Buy Nothing Project',
+      category: 'Grassroots / Community',
+      description: 'Hyperlocal gifting and borrowing communities in thousands of neighborhoods. The original anti-consumption network for clothing and goods.',
+      location: {},
+      links: { website: 'https://buynothingproject.org', facebook: 'https://facebook.com/groups/buynothingproject' },
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 54, flags: 0, createdAt: ts(0, 9), updatedAt: ts(0, 9),
+    },
+  ]
+
+  const fashionResources = [
+    {
+      topicId: fashionId, title: 'Good On You — Ethical Fashion Brand Directory',
+      url: 'https://goodonyou.eco',
+      type: 'tool',
+      description: 'Rates 3,000+ fashion brands on environment, labor, and animal welfare. Find ethical alternatives to boycotted fast fashion brands.',
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 118, flags: 0, createdAt: ts(0, 5),
+    },
+    {
+      topicId: fashionId, title: 'The True Cost — Full Documentary',
+      url: 'https://truecostmovie.com',
+      type: 'video',
+      description: 'Documentary exposing the human and environmental cost of cheap fashion, featuring garment workers in Bangladesh and cotton farmers in Texas.',
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 87, flags: 0, createdAt: ts(0, 7),
+    },
+    {
+      topicId: fashionId, title: 'How to Build a Capsule Wardrobe',
+      url: 'https://www.theguardian.com',
+      type: 'guide',
+      description: 'Practical guide to reducing your wardrobe to quality essentials. Less buying, less waste, more intention.',
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      likes: 46, flags: 0, createdAt: ts(1),
+    },
+  ]
+
+  const fashionEvents = [
+    {
+      topicId: fashionId, title: 'Fashion Revolution Week 2026',
+      date: Timestamp.fromDate(new Date('2026-04-24T00:00:00')),
+      endDate: Timestamp.fromDate(new Date('2026-04-30T23:59:59')),
+      location: 'Worldwide + Virtual',
+      isVirtual: false,
+      externalUrl: 'https://www.fashionrevolution.org/get-involved/',
+      description: 'Annual week of action on the anniversary of the Rana Plaza factory collapse. Thousands of events worldwide asking brands #WhoMadeMyClothes.',
+      moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
+      createdAt: ts(3),
+    },
+  ]
+
+  const fashionChallenge = {
+    topicId: fashionId, title: '30-Day Fashion Fast',
+    description: 'Go 30 days without buying any new clothing. Thrift, borrow, repair, or simply go without.',
+    actionPrompt: 'Share how you handled a clothing need without buying new — and how much you saved.',
+    type: 'individual',
+    moderationStatus: 'active', createdBy: SEED_USER,
+    participantCount: 403, createdAt: ts(1, 6),
+  }
+
+  const [fashionGroupRefs, fashionResourceRefs, fashionEventRefs, fashionChallengeRef] = await Promise.all([
+    Promise.all(fashionGroups.map(g => addDoc(collection(db, 'groups'), g))),
+    Promise.all(fashionResources.map(r => addDoc(collection(db, 'resources'), r))),
+    Promise.all(fashionEvents.map(e => addDoc(collection(db, 'events'), e))),
+    addDoc(collection(db, 'challenges'), fashionChallenge),
+  ])
+
+  const fashionMostRecentTs = ts(0, 4)
+  const fashionFeedItems = [
+    { type: 'group',    refId: fashionGroupRefs[0].id,    likes: 95,  createdAt: ts(0, 4), title: fashionGroups[0].name,     description: fashionGroups[0].description },
+    { type: 'resource', refId: fashionResourceRefs[0].id, likes: 118, createdAt: ts(0, 5), title: fashionResources[0].title, description: fashionResources[0].description, url: fashionResources[0].url },
+    { type: 'group',    refId: fashionGroupRefs[1].id,    likes: 72,  createdAt: ts(0, 6), title: fashionGroups[1].name,     description: fashionGroups[1].description },
+    { type: 'resource', refId: fashionResourceRefs[1].id, likes: 87,  createdAt: ts(0, 7), title: fashionResources[1].title, description: fashionResources[1].description, url: fashionResources[1].url },
+    { type: 'group',    refId: fashionGroupRefs[2].id,    likes: 54,  createdAt: ts(0, 9), title: fashionGroups[2].name,     description: fashionGroups[2].description },
+    { type: 'resource', refId: fashionResourceRefs[2].id, likes: 46,  createdAt: ts(1),    title: fashionResources[2].title, description: fashionResources[2].description, url: fashionResources[2].url },
+    { type: 'challenge', refId: fashionChallengeRef.id,   likes: 0,   createdAt: ts(1, 6), title: fashionChallenge.title,    description: fashionChallenge.description },
+    { type: 'event',    refId: fashionEventRefs[0].id,    likes: 0,   createdAt: ts(3),    title: fashionEvents[0].title,    description: fashionEvents[0].description, url: fashionEvents[0].externalUrl },
+  ].map(fi => ({ ...fi, topicId: fashionId, topicTitle: fashionTitle, topicSlug: fashionSlug, submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME }))
+
+  await Promise.all(fashionFeedItems.map(fi => addDoc(collection(db, 'feed'), fi)))
+  await updateDoc(doc(db, 'topics', fashionId), {
+    enabledComponents: ['groups', 'resources', 'events', 'challenges'],
+    groupCount: fashionGroups.length,
+    resourceCount: fashionResources.length,
+    eventCount: fashionEvents.length,
+    challengeCount: 1,
+    activityScore: 185,
+    lastActivityAt: fashionMostRecentTs,
+    updatedAt: fashionMostRecentTs,
+  })
+}
+
 // ─── ORCHESTRATOR ─────────────────────────────────────────────────────────────
 
 export async function seedAllTopics(userId: string, displayName: string): Promise<void> {
-  await seedAmazonBoycott(userId, displayName)
+  await seedBoycotts(userId, displayName)
   await seedTrashCleanups(userId, displayName)
   await seedDataCenters(userId, displayName)
   await seedSolarpunk(userId, displayName)

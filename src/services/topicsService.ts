@@ -86,6 +86,27 @@ export async function decrementTopicCount(topicId: string, field: 'groupCount' |
   })
 }
 
+export function subscribeChildTopics(parentTopicId: string, callback: (topics: Topic[]) => void): Unsubscribe {
+  if (!parentTopicId) {
+    callback([])
+    return () => {}
+  }
+  const q = query(
+    collection(db, 'topics'),
+    where('parentTopicId', '==', parentTopicId),
+  )
+  return onSnapshot(q, (snap) => {
+    const topics = snap.docs
+      .map(d => toTopic(d.id, d.data()))
+      .filter(t => t.status === 'active')
+      .sort((a, b) => b.activityScore - a.activityScore)
+    callback(topics)
+  }, (err) => {
+    console.error('subscribeChildTopics error:', err)
+    callback([])
+  })
+}
+
 export function subscribeAllTopics(callback: (topics: Topic[]) => void): Unsubscribe {
   const q = query(
     collection(db, 'topics'),

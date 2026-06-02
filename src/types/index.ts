@@ -22,6 +22,9 @@ export interface Topic {
   eventCount: number
   challengeCount: number
   mapPinCount: number
+  parentTopicId?: string
+  parentTopicSlug?: string
+  parentTopicTitle?: string
 }
 
 export interface FeedItem {
