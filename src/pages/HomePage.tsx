@@ -33,11 +33,11 @@ export function HomePage() {
         <h1 className="text-2xl font-bold text-zinc-100 tracking-tight">
           Engine of{' '}
           <span className="bg-gradient-to-r from-emerald-400 to-emerald-300 bg-clip-text text-transparent">
-            change.
+            information.
           </span>
         </h1>
         <p className="text-zinc-500 text-sm mt-0.5">
-          Discover initiatives, find your people, take action.
+          Everything happening for social good, in one place.
         </p>
       </div>
 
@@ -105,11 +105,10 @@ export function HomePage() {
               <button
                 key={type}
                 onClick={() => setTypeFilter(type)}
-                className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-all cursor-pointer border-l-2 ${
-                  typeFilter === type
+                className={`w-full text-left px-3 py-1.5 rounded-lg text-sm transition-all cursor-pointer border-l-2 ${typeFilter === type
                     ? 'bg-zinc-800/80 text-zinc-100 border-l-emerald-500'
                     : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/40 border-l-transparent'
-                }`}
+                  }`}
               >
                 {type === 'all' ? 'All activity' : type.charAt(0).toUpperCase() + type.slice(1) + 's'}
               </button>
@@ -148,13 +147,12 @@ function MobileChip({ label, active, onClick, accent }: {
   return (
     <button
       onClick={onClick}
-      className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
-        active
+      className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-medium border transition-colors ${active
           ? accent
             ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-400'
             : 'bg-zinc-700 border-zinc-600 text-zinc-100'
           : 'bg-zinc-800/60 border-zinc-700/60 text-zinc-500 hover:text-zinc-300 hover:border-zinc-600'
-      }`}
+        }`}
     >
       {label}
     </button>
@@ -167,11 +165,10 @@ function FilterButton({ label, count, active, onClick }: {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-sm transition-all cursor-pointer border-l-2 ${
-        active
+      className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-sm transition-all cursor-pointer border-l-2 ${active
           ? 'bg-zinc-800/80 text-zinc-100 border-l-emerald-500'
           : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/40 border-l-transparent'
-      }`}
+        }`}
     >
       <span className="truncate">{label}</span>
       <span className={`text-xs ml-2 shrink-0 ${active ? 'text-zinc-400' : 'text-zinc-700'}`}>{count}</span>
