@@ -169,3 +169,14 @@ export async function deleteEvent(id: string, topicId: string): Promise<void> {
     decrementTopicCount(topicId, 'eventCount'),
   ])
 }
+
+export async function updateEvent(
+  id: string,
+  update: Partial<Pick<ImpetusEvent, 'title' | 'description' | 'externalUrl' | 'isVirtual' | 'location' | 'date' | 'endDate'>>,
+): Promise<void> {
+  const { date, endDate, ...rest } = update
+  const firestoreUpdate: Record<string, unknown> = { ...rest }
+  if (date) firestoreUpdate.date = Timestamp.fromDate(date)
+  if (endDate !== undefined) firestoreUpdate.endDate = endDate ? Timestamp.fromDate(endDate) : null
+  await updateDoc(doc(db, 'events', id), firestoreUpdate)
+}

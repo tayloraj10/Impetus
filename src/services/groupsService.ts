@@ -167,3 +167,10 @@ export async function deleteGroup(id: string, topicId: string): Promise<void> {
     decrementTopicCount(topicId, 'groupCount'),
   ])
 }
+
+export async function updateGroup(
+  id: string,
+  update: Partial<Pick<Group, 'name' | 'description' | 'location' | 'links'>>,
+): Promise<void> {
+  await updateDoc(doc(db, 'groups', id), { ...update, updatedAt: serverTimestamp() })
+}

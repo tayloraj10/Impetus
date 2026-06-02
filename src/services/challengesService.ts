@@ -157,3 +157,14 @@ export async function deleteChallenge(id: string, topicId: string): Promise<void
     decrementTopicCount(topicId, 'challengeCount'),
   ])
 }
+
+export async function deleteChallengeSubmission(submissionId: string, challengeId: string): Promise<void> {
+  await Promise.all([
+    deleteDoc(doc(db, 'challenge_submissions', submissionId)),
+    updateDoc(doc(db, 'challenges', challengeId), { participantCount: increment(-1) }),
+  ])
+}
+
+export async function updateChallengeSubmission(submissionId: string, note: string | null): Promise<void> {
+  await updateDoc(doc(db, 'challenge_submissions', submissionId), { note })
+}

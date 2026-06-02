@@ -1,6 +1,11 @@
-import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore'
-import { db } from '../config/firebase'
+import { collection, query, where, getDocs, doc, getDoc, deleteDoc } from 'firebase/firestore'
+import { deleteUser } from 'firebase/auth'
+import { db, auth } from '../config/firebase'
 import type { UserProfile, Group, Resource, ImpetusEvent, ChallengeSubmission } from '../types'
+import { deleteGroup } from './groupsService'
+import { deleteResource } from './resourcesService'
+import { deleteEvent } from './eventsService'
+import { deleteChallengeSubmission } from './challengesService'
 
 export async function getUserProfile(uid: string): Promise<UserProfile | null> {
   const snap = await getDoc(doc(db, 'users', uid))
@@ -90,4 +95,19 @@ export async function getUserContributions(uid: string): Promise<UserContributio
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 
   return { groups, resources, events, challengeSubmissions }
+}
+
+export async function deleteAllUserData(contributions: UserContributions): Promise<void> {
+  await Promise.all([
+    ...contributions.groups.map(g => deleteGroup(g.id, g.topicId)),
+    ...contributions.resources.map(r => deleteResource(r.id, r.topicId)),
+    ...contributions.events.map(e => deleteEvent(e.id, e.topicId)),
+    ...contributions.challengeSubmissions.map(s => deleteChallengeSubmission(s.id, s.challengeId)),
+  ])
+}
+
+export async function deleteUserAccount(uid: string): Promise<void> {
+  await deleteDoc(doc(db, 'users', uid))
+  const currentUser = auth.currentUser
+  if (currentUser) await deleteUser(currentUser)
 }

@@ -163,3 +163,10 @@ export async function deleteResource(id: string, topicId: string): Promise<void>
     decrementTopicCount(topicId, 'resourceCount'),
   ])
 }
+
+export async function updateResource(
+  id: string,
+  update: Partial<Pick<Resource, 'title' | 'url' | 'type' | 'typeOther' | 'description'>>,
+): Promise<void> {
+  await updateDoc(doc(db, 'resources', id), update)
+}
