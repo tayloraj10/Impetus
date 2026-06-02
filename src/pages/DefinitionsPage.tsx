@@ -79,9 +79,9 @@ export function DefinitionsPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-zinc-100 mb-1">Glossary</h1>
+        <h1 className="text-2xl font-bold text-zinc-100 mb-1">Definitions</h1>
         <p className="text-zinc-500 text-sm">
-          Common political and economic terms, curated by administrators. Rate each definition's accuracy.
+          Common political and economic terms. You can rate each definition's accuracy.
         </p>
       </div>
 
@@ -113,7 +113,7 @@ export function DefinitionsPage() {
             onClick={() => setSort('rating')}
             className={`px-3 py-2 transition-colors cursor-pointer ${sort === 'rating' ? 'bg-zinc-800 text-zinc-100' : 'text-zinc-500 hover:text-zinc-300'}`}
           >
-            Top Rated
+            Rated Most Accurate
           </button>
         </div>
       </div>
@@ -240,7 +240,7 @@ function DefinitionCard({
           count={ratingCount}
         />
         {!onRate && (
-          <span className="text-xs text-zinc-600">Sign in to rate</span>
+          <span className="text-xs text-zinc-600">Sign in to rate accuracy</span>
         )}
       </div>
     </div>
@@ -272,7 +272,7 @@ function StarRating({
             onMouseLeave={() => setHover(null)}
             disabled={!onRate}
             className={`transition-transform ${onRate ? 'hover:scale-110 cursor-pointer' : 'cursor-default'}`}
-            title={onRate ? `Rate ${star} out of 5` : undefined}
+            title={onRate ? `Rate accuracy ${star} out of 5` : undefined}
           >
             <svg
               className={`w-4 h-4 transition-colors ${
@@ -289,10 +289,10 @@ function StarRating({
       </div>
       {average !== null ? (
         <span className="text-xs text-zinc-500">
-          {average.toFixed(1)} · {count} {count === 1 ? 'rating' : 'ratings'}
+          {average.toFixed(1)} · {count} {count === 1 ? 'accuracy rating' : 'accuracy ratings'}
         </span>
       ) : (
-        <span className="text-xs text-zinc-600">No ratings yet</span>
+        <span className="text-xs text-zinc-600">No accuracy ratings yet</span>
       )}
     </div>
   )

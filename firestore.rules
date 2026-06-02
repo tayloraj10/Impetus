@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isModerator() {
+      return isSignedIn() && userRole() in ['moderator', 'admin'];
+    }
+
+    function isAdmin() {
+      return isSignedIn() && userRole() == 'admin';
+    }
+
+    // Topics — public read, admin write
+    match /topics/{topicId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Global feed — public read, anyone signed in can like; writes happen server-side via services
+    match /feed/{itemId} {
+      allow read: if true;
+      allow write: if isSignedIn();
+    }
+
+    // Groups, Resources, Events — public read, signed-in users can create, moderators+ can update/delete
+    match /groups/{docId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isModerator();
+    }
+
+    match /resources/{docId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isModerator();
+    }
+
+    match /events/{docId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isModerator();
+    }
+
+    // Challenges — public read, moderators+ can create/edit
+    match /challenges/{docId} {
+      allow read: if true;
+      allow create, update, delete: if isModerator();
+    }
+
+    // Challenge submissions — public read, signed-in users submit their own
+    match /challenge_submissions/{docId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isModerator();
+    }
+
+    // Topic suggestions — signed-in users can create; moderators+ can read/update
+    match /topic_suggestions/{docId} {
+      allow create: if isSignedIn();
+      allow read, update, delete: if isModerator();
+    }
+
+    // Users — anyone signed in can read their own doc; admins can read/write all
+    match /users/{userId} {
+      allow read, update: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if isAdmin();
+    }
+
+    // Definitions — public read, admin write; signed-in users can update rating fields only
+    match /definitions/{docId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() ||
+        (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['ratingSum', 'ratingCount', 'updatedAt']));
+    }
+
+    // Definition ratings — users can read/write their own rating documents
+    match /definition_ratings/{ratingId} {
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
