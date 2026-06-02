@@ -237,3 +237,31 @@ export interface CreateMapPinInput {
   url?: string
   coordinates: { lat: number; lng: number }
 }
+
+export type DefinitionCategory = 'political' | 'economic' | 'legal' | 'social' | 'other'
+
+export interface Definition {
+  id: string
+  term: string
+  definition: string
+  extendedNote?: string | null
+  example?: string | null
+  category: DefinitionCategory
+  relatedTerms: string[]
+  createdBy: string
+  createdAt: Date
+  updatedAt: Date
+  status: 'live' | 'archived'
+  ratingSum: number
+  ratingCount: number
+}
+
+export interface CreateDefinitionInput {
+  term: string
+  definition: string
+  extendedNote?: string
+  example?: string
+  category: DefinitionCategory
+  relatedTerms?: string[]
+  createdBy: string
+}

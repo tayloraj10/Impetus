@@ -6,6 +6,9 @@ import { formatLocation } from '../services/geocodeService'
 import { useCategories } from '../hooks/useGroupCategories'
 import { addCategory, deleteCategory, seedDefaultCategories } from '../services/categoriesService'
 import {
+  subscribeAllDefinitions, createDefinition, updateDefinition,
+} from '../services/definitionsService'
+import {
   subscribePendingGroups, setGroupModerationStatus,
   subscribeRemovedGroups, restoreGroup, deleteGroup,
 } from '../services/groupsService'
@@ -30,7 +33,7 @@ import { wipeContentCollections } from '../services/devService'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { formatTimeAgo, formatDate } from '../utils/time'
-import type { Topic, ComponentType, Group, Resource, ImpetusEvent, Challenge, MapPin } from '../types'
+import type { Topic, ComponentType, Group, Resource, ImpetusEvent, Challenge, MapPin, Definition, DefinitionCategory } from '../types'
 
 const ALL_COMPONENTS: { key: ComponentType; label: string }[] = [
   { key: 'groups', label: 'Groups' },
@@ -96,6 +99,8 @@ export function AdminPage() {
           <CategoriesManager />
         </section>
       )}
+
+      {isAdmin && <DefinitionsManager />}
 
       {isAdmin && (
         <>
@@ -1365,5 +1370,290 @@ function RemovedCard({
         </button>
       </div>
     </div>
+  )
+}
+
+// ─── Definitions ─────────────────────────────────────────────────────────────
+
+const DEF_CATEGORIES: { key: DefinitionCategory; label: string }[] = [
+  { key: 'political', label: 'Political' },
+  { key: 'economic', label: 'Economic' },
+  { key: 'legal', label: 'Legal' },
+  { key: 'social', label: 'Social' },
+  { key: 'other', label: 'Other' },
+]
+
+const DEF_CATEGORY_COLORS: Record<DefinitionCategory, string> = {
+  political: 'text-blue-400',
+  economic: 'text-emerald-400',
+  legal: 'text-amber-400',
+  social: 'text-purple-400',
+  other: 'text-zinc-400',
+}
+
+function DefinitionsManager() {
+  const { user } = useAuth()
+  const [definitions, setDefinitions] = useState<Definition[]>([])
+  const [createOpen, setCreateOpen] = useState(false)
+  const [editDef, setEditDef] = useState<Definition | null>(null)
+
+  useEffect(() => subscribeAllDefinitions(setDefinitions), [])
+
+  const live = definitions.filter(d => d.status === 'live')
+  const archived = definitions.filter(d => d.status === 'archived')
+
+  return (
+    <section className="mb-8">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
+          Definitions ({live.length})
+        </h2>
+        <button
+          onClick={() => setCreateOpen(true)}
+          className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium transition-colors cursor-pointer"
+        >
+          + Add Definition
+        </button>
+      </div>
+
+      {definitions.length === 0 ? (
+        <p className="text-zinc-600 text-sm">No definitions yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {live.map(def => (
+            <DefinitionAdminRow
+              key={def.id}
+              definition={def}
+              onEdit={() => setEditDef(def)}
+              onArchive={() => updateDefinition(def.id, { status: 'archived' })}
+            />
+          ))}
+          {archived.length > 0 && (
+            <>
+              <p className="text-xs text-zinc-600 uppercase tracking-wider pt-2 pb-1">Archived</p>
+              {archived.map(def => (
+                <DefinitionAdminRow
+                  key={def.id}
+                  definition={def}
+                  onEdit={() => setEditDef(def)}
+                  onRestore={() => updateDefinition(def.id, { status: 'live' })}
+                />
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
+      {createOpen && user && (
+        <DefinitionModal createdBy={user.uid} onClose={() => setCreateOpen(false)} />
+      )}
+      {editDef && (
+        <DefinitionModal definition={editDef} createdBy={editDef.createdBy} onClose={() => setEditDef(null)} />
+      )}
+    </section>
+  )
+}
+
+function DefinitionAdminRow({
+  definition,
+  onEdit,
+  onArchive,
+  onRestore,
+}: {
+  definition: Definition
+  onEdit: () => void
+  onArchive?: () => void
+  onRestore?: () => void
+}) {
+  const avg = definition.ratingCount > 0
+    ? (definition.ratingSum / definition.ratingCount).toFixed(1)
+    : null
+
+  return (
+    <div className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 flex items-center gap-3">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+          <span className={`text-xs font-medium capitalize ${DEF_CATEGORY_COLORS[definition.category]}`}>
+            {definition.category}
+          </span>
+          {avg && (
+            <span className="text-xs text-amber-500">★ {avg} ({definition.ratingCount})</span>
+          )}
+          {definition.status === 'archived' && (
+            <span className="text-xs text-zinc-600 bg-zinc-800 px-1.5 py-0.5 rounded">archived</span>
+          )}
+        </div>
+        <p className="text-zinc-100 text-sm font-medium">{definition.term}</p>
+        <p className="text-zinc-500 text-xs mt-0.5 truncate">{definition.definition}</p>
+      </div>
+      <div className="flex items-center gap-2 shrink-0">
+        <button
+          onClick={onEdit}
+          className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+        >
+          Edit
+        </button>
+        {onArchive && (
+          <button
+            onClick={onArchive}
+            className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-500 hover:border-red-700 hover:text-red-400 transition-colors cursor-pointer"
+          >
+            Archive
+          </button>
+        )}
+        {onRestore && (
+          <button
+            onClick={onRestore}
+            className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-400 hover:border-emerald-700 hover:text-emerald-400 transition-colors cursor-pointer"
+          >
+            Restore
+          </button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function DefinitionModal({
+  definition,
+  createdBy,
+  onClose,
+}: {
+  definition?: Definition
+  createdBy: string
+  onClose: () => void
+}) {
+  const isEdit = !!definition
+  const [term, setTerm] = useState(definition?.term ?? '')
+  const [category, setCategory] = useState<DefinitionCategory>(definition?.category ?? 'political')
+  const [defText, setDefText] = useState(definition?.definition ?? '')
+  const [extendedNote, setExtendedNote] = useState(definition?.extendedNote ?? '')
+  const [example, setExample] = useState(definition?.example ?? '')
+  const [relatedInput, setRelatedInput] = useState(definition?.relatedTerms.join(', ') ?? '')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!term.trim() || !defText.trim()) return
+    setSaving(true)
+    setError('')
+    const relatedTerms = relatedInput.split(',').map(t => t.trim()).filter(Boolean)
+    try {
+      if (isEdit && definition) {
+        await updateDefinition(definition.id, {
+          term: term.trim(),
+          definition: defText.trim(),
+          extendedNote: extendedNote.trim() || null,
+          example: example.trim() || null,
+          category,
+          relatedTerms,
+        })
+      } else {
+        await createDefinition({
+          term,
+          definition: defText,
+          extendedNote: extendedNote || undefined,
+          example: example || undefined,
+          category,
+          relatedTerms,
+          createdBy,
+        })
+      }
+      onClose()
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title={isEdit ? 'Edit Definition' : 'Add Definition'}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2 sm:col-span-1">
+            <label className="block text-xs text-zinc-400 mb-1">Term *</label>
+            <input
+              value={term}
+              onChange={e => setTerm(e.target.value)}
+              placeholder="e.g. Keynesian Economics"
+              required
+              className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors"
+            />
+          </div>
+          <div className="col-span-2 sm:col-span-1">
+            <label className="block text-xs text-zinc-400 mb-1">Category *</label>
+            <select
+              value={category}
+              onChange={e => setCategory(e.target.value as DefinitionCategory)}
+              className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none transition-colors cursor-pointer"
+            >
+              {DEF_CATEGORIES.map(c => (
+                <option key={c.key} value={c.key}>{c.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs text-zinc-400 mb-1">Definition *</label>
+          <textarea
+            value={defText}
+            onChange={e => setDefText(e.target.value)}
+            placeholder="Clear, accurate definition…"
+            required
+            rows={4}
+            className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-zinc-400 mb-1">
+            Extended note <span className="text-zinc-600">(optional)</span>
+          </label>
+          <textarea
+            value={extendedNote as string}
+            onChange={e => setExtendedNote(e.target.value)}
+            placeholder="Additional context, caveats, or nuance…"
+            rows={3}
+            className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-zinc-400 mb-1">
+            Example usage <span className="text-zinc-600">(optional)</span>
+          </label>
+          <input
+            value={example as string}
+            onChange={e => setExample(e.target.value)}
+            placeholder={`e.g. "The government adopted a Keynesian approach…"`}
+            className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-zinc-400 mb-1">
+            Related terms <span className="text-zinc-600">(optional, comma-separated)</span>
+          </label>
+          <input
+            value={relatedInput}
+            onChange={e => setRelatedInput(e.target.value)}
+            placeholder="e.g. Fiscal Policy, Monetary Policy"
+            className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors"
+          />
+        </div>
+
+        {error && <p className="text-red-400 text-xs">{error}</p>}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={saving || !term.trim() || !defText.trim()}>
+            {saving ? 'Saving…' : isEdit ? 'Save Changes' : 'Add Definition'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }

@@ -1489,6 +1489,211 @@ export async function seedBoycotts(userId: string, displayName: string): Promise
   })
 }
 
+// ─── DEFINITIONS ──────────────────────────────────────────────────────────────
+
+async function findOrCreateDefinition(term: string, data: {
+  definition: string
+  category: string
+  extendedNote?: string
+  example?: string
+  relatedTerms?: string[]
+  createdBy: string
+}): Promise<void> {
+  const snap = await getDocs(query(collection(db, 'definitions'), where('term', '==', term)))
+  if (!snap.empty) return
+  await addDoc(collection(db, 'definitions'), {
+    term,
+    definition: data.definition,
+    extendedNote: data.extendedNote ?? null,
+    example: data.example ?? null,
+    category: data.category,
+    relatedTerms: data.relatedTerms ?? [],
+    createdBy: data.createdBy,
+    status: 'live',
+    ratingSum: 0,
+    ratingCount: 0,
+    createdAt: Timestamp.now(),
+    updatedAt: Timestamp.now(),
+  })
+}
+
+export async function seedDefinitions(userId: string): Promise<void> {
+  const DEFINITIONS: Parameters<typeof findOrCreateDefinition>[] = [
+    ['Antitrust', {
+      category: 'legal',
+      definition: 'Laws and regulations designed to prevent monopolies, promote fair competition, and protect consumers from anticompetitive business practices.',
+      example: 'The FTC filed an antitrust lawsuit accusing the company of using its market dominance to crush smaller competitors.',
+      relatedTerms: ['Monopoly', 'Oligopoly'],
+      createdBy: userId,
+    }],
+    ['Austerity', {
+      category: 'economic',
+      definition: 'Government economic policy aimed at reducing a budget deficit through spending cuts, tax increases, or both.',
+      extendedNote: 'Widely debated: proponents argue austerity restores fiscal sustainability and market confidence; critics argue it contracts economic growth, deepens recessions, and disproportionately harms public services and lower-income households.',
+      relatedTerms: ['GDP', 'Deficit', 'Public Debt', 'Subsidy'],
+      createdBy: userId,
+    }],
+    ['Bipartisan', {
+      category: 'political',
+      definition: 'Involving cooperation, agreement, or support from members of both major political parties.',
+      example: 'The infrastructure bill passed with bipartisan support, drawing votes from both sides of the aisle.',
+      relatedTerms: ['Partisan', 'Filibuster'],
+      createdBy: userId,
+    }],
+    ['Citizens United', {
+      category: 'legal',
+      definition: 'A landmark 2010 Supreme Court ruling that the First Amendment prohibits the government from restricting independent political expenditures by corporations, associations, or labor unions.',
+      extendedNote: 'The decision enabled the creation of Super PACs and dramatically increased the flow of outside money into elections. Critics argue it gives wealthy interests outsized influence; proponents argue it protects free speech.',
+      relatedTerms: ['Dark Money', 'Super PAC', 'Lobbying'],
+      createdBy: userId,
+    }],
+    ['Dark Money', {
+      category: 'political',
+      definition: 'Political spending by nonprofit organizations that are not required to publicly disclose their donors, making the true source of the funding opaque.',
+      extendedNote: 'Enabled by Citizens United and certain IRS tax classifications (501(c)(4) "social welfare" groups). Can legally fund political advertising and issue advocacy without revealing who is paying.',
+      relatedTerms: ['Citizens United', 'Lobbying', 'Campaign Finance'],
+      createdBy: userId,
+    }],
+    ['Due Process', {
+      category: 'legal',
+      definition: 'The constitutional requirement that government must follow fair legal procedures before depriving any person of life, liberty, or property.',
+      extendedNote: 'The Fifth Amendment applies this to the federal government; the Fourteenth Amendment extends it to states. Due process has two dimensions: procedural (fair procedures) and substantive (protection of fundamental rights regardless of procedure).',
+      example: 'The defendant argued her due process rights were violated when the court denied her a hearing.',
+      relatedTerms: ['Habeas Corpus', 'Fourth Amendment', 'Civil Liberties'],
+      createdBy: userId,
+    }],
+    ['Filibuster', {
+      category: 'political',
+      definition: 'A tactic in the US Senate where a senator prolongs debate to delay or block a vote on legislation. Ending a filibuster requires 60 votes (cloture).',
+      extendedNote: 'The filibuster applies only to legislation, not nominations — Senate rules were changed to require only a simple majority for executive and judicial nominees. Critics argue the 60-vote threshold gives the minority too much power to block majority-supported bills.',
+      relatedTerms: ['Cloture', 'Senate', 'Bipartisan'],
+      createdBy: userId,
+    }],
+    ['Food Desert', {
+      category: 'social',
+      definition: 'A geographic area — typically low-income and urban or rural — where residents have limited access to affordable, nutritious food due to a lack of nearby grocery stores.',
+      extendedNote: 'Strongly correlated with race and income. Residents in food deserts often rely on convenience stores and fast food, contributing to higher rates of obesity, diabetes, and other diet-related conditions.',
+      relatedTerms: ['Food Sovereignty', 'Food Justice', 'Systemic Racism'],
+      createdBy: userId,
+    }],
+    ['GDP (Gross Domestic Product)', {
+      category: 'economic',
+      definition: 'The total monetary value of all goods and services produced within a country during a given period, used as the primary measure of economic size and growth.',
+      extendedNote: 'GDP is a measure of output, not wellbeing — it counts spending on prisons and medical care the same as spending on education and parks, and ignores inequality, sustainability, and unpaid labor. Alternative measures like GNH (Gross National Happiness) attempt to account for broader human flourishing.',
+      example: 'US GDP grew 2.5% last year, but median household income remained flat.',
+      relatedTerms: ['Inflation', 'Recession', 'Austerity', 'GNP'],
+      createdBy: userId,
+    }],
+    ['Gentrification', {
+      category: 'social',
+      definition: 'A process of neighborhood change in which wealthier residents, businesses, and investment move into a lower-income area, raising property values and often displacing long-term residents and community institutions.',
+      extendedNote: 'Deeply contested: some see economic development and improved infrastructure; others emphasize the cultural erasure and involuntary displacement of poorer residents, particularly communities of color, who are priced out by rising rents.',
+      relatedTerms: ['Housing Affordability', 'Food Desert', 'Systemic Racism'],
+      createdBy: userId,
+    }],
+    ['Gerrymandering', {
+      category: 'political',
+      definition: 'The manipulation of electoral district boundaries by the party in power to give itself a structural advantage in future elections.',
+      extendedNote: 'Named after Massachusetts Governor Elbridge Gerry, who signed a contorted district map in 1812. Two common forms: "packing" (concentrating the opposing party\'s voters into one district) and "cracking" (splitting an opposing group across multiple districts to dilute their vote).',
+      example: 'Courts struck down the district map as unconstitutional racial gerrymandering that diluted Black voting power.',
+      relatedTerms: ['Redistricting', 'Voter Suppression', 'Electoral College'],
+      createdBy: userId,
+    }],
+    ['Grassroots', {
+      category: 'political',
+      definition: 'Describes political or social movements organized from the bottom up by ordinary citizens rather than directed by established institutions, parties, or elites.',
+      extendedNote: 'Contrasted with "astroturfing," which is the manufacture of fake grassroots support, typically funded by corporations or political operatives to simulate organic citizen activity.',
+      example: 'The campaign grew from grassroots door-knocking in small towns before attracting national attention.',
+      relatedTerms: ['Lobbying', 'Mutual Aid', 'Civic Engagement'],
+      createdBy: userId,
+    }],
+    ['Habeas Corpus', {
+      category: 'legal',
+      definition: 'Latin for "you shall have the body." A legal right that requires the government to justify, before a court, why a person is being detained. It is a foundational protection against unlawful imprisonment.',
+      extendedNote: 'Often called the "great writ of liberty." Can be suspended by Congress in cases of rebellion or invasion under the Constitution. Historically used to challenge arbitrary detention and imprisonment without trial.',
+      example: 'The prisoner filed a habeas corpus petition arguing his continued detention was no longer legally justified.',
+      relatedTerms: ['Due Process', 'Civil Liberties'],
+      createdBy: userId,
+    }],
+    ['Inflation', {
+      category: 'economic',
+      definition: 'A general, sustained increase in the price level of goods and services in an economy, which reduces the purchasing power of money.',
+      extendedNote: 'Measured primarily by the Consumer Price Index (CPI). Central banks typically target ~2% inflation as healthy; high inflation erodes savings and living standards while benefiting debtors. Deflation (negative inflation) can be equally dangerous, discouraging spending and investment.',
+      example: 'With inflation at 7%, a basket of groceries that cost $100 last year now costs $107.',
+      relatedTerms: ['GDP', 'Federal Reserve', 'Austerity', 'Recession'],
+      createdBy: userId,
+    }],
+    ['Lobbying', {
+      category: 'political',
+      definition: 'The act of attempting to influence government decisions, legislation, or regulation, typically on behalf of a corporation, industry, union, or advocacy group.',
+      extendedNote: 'Legal in the US and many democracies. Registered lobbyists must publicly disclose their activities and clients. Critics argue well-funded lobbying gives corporations and wealthy interest groups disproportionate access to lawmakers compared to ordinary citizens.',
+      relatedTerms: ['Dark Money', 'Citizens United', 'Grassroots'],
+      createdBy: userId,
+    }],
+    ['Monopoly', {
+      category: 'economic',
+      definition: 'A market structure in which a single company or entity has exclusive control over a product or service, eliminating competition and allowing it to set prices without market constraint.',
+      example: 'Standard Oil held a near-monopoly on US oil refining in the early 1900s before being broken up by antitrust action.',
+      relatedTerms: ['Oligopoly', 'Antitrust', 'Market Competition'],
+      createdBy: userId,
+    }],
+    ['Mutual Aid', {
+      category: 'social',
+      definition: 'Voluntary, reciprocal exchange of resources and services within a community for their mutual benefit, without relying on institutional intermediaries.',
+      extendedNote: 'Distinguished from charity by its horizontal, peer-to-peer structure — participants are both givers and recipients. Rooted in anarchist and labor organizing traditions; widely practiced during disasters and crises when institutional support fails.',
+      example: 'Neighbors organized a mutual aid network to deliver groceries and medication to elderly and immunocompromised residents during the pandemic.',
+      relatedTerms: ['Grassroots', 'Solidarity Economy', 'Community Organizing'],
+      createdBy: userId,
+    }],
+    ['Oligopoly', {
+      category: 'economic',
+      definition: 'A market structure dominated by a small number of large firms, limiting competition and giving each firm significant pricing power.',
+      example: 'The US airline industry operates as an oligopoly, with four carriers controlling roughly 80% of domestic flights.',
+      relatedTerms: ['Monopoly', 'Antitrust', 'Market Competition'],
+      createdBy: userId,
+    }],
+    ['Referendum', {
+      category: 'political',
+      definition: 'A direct vote by the entire electorate on a specific political question, policy, or constitutional change — bypassing the normal legislative process.',
+      extendedNote: 'Used widely in Europe and in US states (where they are often called "ballot initiatives" or "propositions"). Critics argue referendums can be manipulated by misleading campaigns and may not be appropriate for complex policy questions.',
+      example: 'The 2016 Brexit referendum asked UK voters whether to remain in or leave the European Union.',
+      relatedTerms: ['Direct Democracy', 'Ballot Initiative', 'Representative Democracy'],
+      createdBy: userId,
+    }],
+    ['Subsidy', {
+      category: 'economic',
+      definition: 'Financial assistance provided by the government to support a business, industry, or individual, usually to promote a specific economic or social policy goal.',
+      extendedNote: 'Can take the form of direct cash payments, tax breaks, low-interest loans, or price guarantees. Common examples: agricultural subsidies, fossil fuel subsidies, housing vouchers. Critics argue subsidies distort markets and can entrench powerful industries.',
+      example: 'The government provides subsidies to corn farmers to keep food prices stable and support rural economies.',
+      relatedTerms: ['Austerity', 'Tax Incentive', 'GDP'],
+      createdBy: userId,
+    }],
+    ['Systemic Racism', {
+      category: 'social',
+      definition: 'Racism embedded in the policies, laws, institutions, and social norms of a society that produces unequal outcomes for racial groups — regardless of the intent of individual actors.',
+      extendedNote: 'Distinguished from interpersonal racism (individual prejudice) by its focus on structures: housing policy, lending practices, school funding formulas, and criminal sentencing that produce racial disparities even without overtly racist intent. Evidenced by persistent gaps in wealth, education, health, and incarceration across racial lines.',
+      relatedTerms: ['Gentrification', 'Food Desert', 'Civil Rights'],
+      createdBy: userId,
+    }],
+    ['Trickle-Down Economics', {
+      category: 'economic',
+      definition: 'An informal term for supply-side economic theory holding that tax cuts and deregulation for businesses and wealthy individuals will stimulate growth and investment that eventually benefits lower-income groups.',
+      extendedNote: 'Not a term economists use formally — it\'s largely a critics\' label. Proponents prefer "supply-side economics" and argue lower taxes incentivize investment and job creation. Critics argue the benefits are captured at the top and do not meaningfully reach lower-income households, pointing to decades of rising inequality following supply-side policies.',
+      relatedTerms: ['GDP', 'Austerity', 'Subsidy', 'Universal Basic Income (UBI)'],
+      createdBy: userId,
+    }],
+    ['Universal Basic Income (UBI)', {
+      category: 'economic',
+      definition: 'A policy proposal in which every adult citizen receives a regular, unconditional cash payment from the government, regardless of employment status or income.',
+      extendedNote: 'Proponents argue UBI reduces poverty, provides a floor of economic security, and adapts to automation eliminating jobs. Critics raise concerns about fiscal cost, potential reductions in work incentives, and whether universal payments are better targeted elsewhere. Several pilot programs have been tested in Finland, Kenya, and US cities.',
+      relatedTerms: ['Inflation', 'Subsidy', 'GDP', 'Austerity'],
+      createdBy: userId,
+    }],
+  ]
+
+  await Promise.all(DEFINITIONS.map(args => findOrCreateDefinition(...args)))
+}
+
 // ─── ORCHESTRATOR ─────────────────────────────────────────────────────────────
 
 export async function seedAllTopics(userId: string, displayName: string): Promise<void> {
@@ -1501,4 +1706,5 @@ export async function seedAllTopics(userId: string, displayName: string): Promis
   await seedUrbanRewilding(userId, displayName)
   await seedRightToRepair(userId, displayName)
   await seedEthicalAI(userId, displayName)
+  await seedDefinitions(userId)
 }

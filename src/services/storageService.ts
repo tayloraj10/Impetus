@@ -1,7 +1,7 @@
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage'
 import { storage } from '../config/firebase'
 
-export async function uploadImage(file: File, path: string): Promise<string> {
+export async function uploadImage(file: File | Blob, path: string): Promise<string> {
   const storageRef = ref(storage, path)
   await uploadBytes(storageRef, file)
   return getDownloadURL(storageRef)
@@ -26,4 +26,8 @@ export function groupLogoPath(file: File): string {
 export function submissionImagePath(challengeId: string, userId: string, file: File): string {
   const ext = file.name.split('.').pop()
   return `challenge_submissions/${challengeId}/${userId}-${Date.now()}.${ext}`
+}
+
+export function profilePhotoPath(userId: string): string {
+  return `users/${userId}/profile.jpg`
 }

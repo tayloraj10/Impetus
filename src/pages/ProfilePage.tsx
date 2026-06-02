@@ -1,9 +1,12 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useTopics } from '../hooks/useTopics'
 import { formatLocation } from '../services/geocodeService'
 import { getUserProfile, getUserContributions, type UserContributions } from '../services/userService'
+import { updateDisplayName, updatePhotoURL } from '../services/authService'
+import { uploadImage, profilePhotoPath } from '../services/storageService'
+import { CropModal } from '../components/ui/CropModal'
 import type { UserProfile, Group, Resource, ImpetusEvent, ChallengeSubmission, Topic } from '../types'
 import { Spinner } from '../components/ui/Spinner'
 import { formatTimeAgo, formatDate } from '../utils/time'
@@ -26,6 +29,14 @@ export function ProfilePage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [tab, setTab] = useState<Tab>('all')
+
+  const [editing, setEditing] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editPhotoBlob, setEditPhotoBlob] = useState<Blob | null>(null)
+  const [editPhotoPreview, setEditPhotoPreview] = useState<string | null>(null)
+  const [cropSrc, setCropSrc] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { topics } = useTopics()
   const topicMap = useMemo(
@@ -75,6 +86,61 @@ export function ProfilePage() {
   const isOwnProfile = authUser?.uid === profile.id
   const showEmail = isOwnProfile || authRole === 'admin'
 
+  function startEditing() {
+    setEditName(profile!.displayName)
+    setEditPhotoBlob(null)
+    setEditPhotoPreview(null)
+    setEditing(true)
+  }
+
+  function cancelEditing() {
+    setEditing(false)
+    setEditPhotoPreview(null)
+    setEditPhotoBlob(null)
+    setCropSrc(null)
+  }
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setCropSrc(URL.createObjectURL(file))
+  }
+
+  function handleCropConfirm(blob: Blob) {
+    setEditPhotoBlob(blob)
+    setEditPhotoPreview(URL.createObjectURL(blob))
+    setCropSrc(null)
+  }
+
+  function handleCropCancel() {
+    setCropSrc(null)
+  }
+
+  async function handleSave() {
+    if (!authUser || !profile) return
+    const trimmed = editName.trim()
+    if (!trimmed) return
+    setSaving(true)
+    try {
+      let newPhotoURL = profile.photoURL ?? null
+      if (editPhotoBlob) {
+        const path = profilePhotoPath(authUser.uid)
+        newPhotoURL = await uploadImage(editPhotoBlob, path)
+        await updatePhotoURL(authUser, newPhotoURL)
+      }
+      if (trimmed !== profile.displayName) {
+        await updateDisplayName(authUser, trimmed)
+      }
+      setProfile(p => p ? { ...p, displayName: trimmed, photoURL: newPhotoURL ?? undefined } : p)
+      setEditing(false)
+      setEditPhotoPreview(null)
+      setEditPhotoBlob(null)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const allEntries: ContributionEntry[] = contributions
     ? [
         ...contributions.groups.map(item => ({ kind: 'group' as const, item, date: item.createdAt })),
@@ -100,12 +166,43 @@ export function ProfilePage() {
   ]
 
   return (
+    <>
+    {cropSrc && (
+      <CropModal src={cropSrc} onConfirm={handleCropConfirm} onCancel={handleCropCancel} />
+    )}
     <div className="max-w-3xl mx-auto px-4 py-8">
       {/* Profile header */}
       <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 mb-6">
         <div className="flex items-start gap-4">
-          <div className="shrink-0">
-            {profile.photoURL ? (
+          <div className="shrink-0 relative">
+            {editing ? (
+              <>
+                {editPhotoPreview || profile.photoURL ? (
+                  <img
+                    src={editPhotoPreview ?? profile.photoURL!}
+                    alt=""
+                    className="w-16 h-16 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center text-2xl font-bold text-zinc-400">
+                    {profile.displayName.charAt(0).toUpperCase()}
+                  </div>
+                )}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 rounded-full bg-black/60 flex items-center justify-center text-xs text-zinc-300 hover:bg-black/70 transition-colors"
+                >
+                  Change
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePhotoChange}
+                />
+              </>
+            ) : profile.photoURL ? (
               <img
                 src={profile.photoURL}
                 alt=""
@@ -118,24 +215,63 @@ export function ProfilePage() {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl font-bold text-zinc-100">{profile.displayName}</h1>
-              {profile.role !== 'user' && (
-                <span className={`px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${
-                  profile.role === 'admin'
-                    ? 'bg-amber-500/20 text-amber-400'
-                    : 'bg-emerald-500/20 text-emerald-400'
-                }`}>
-                  {profile.role}
-                </span>
-              )}
-            </div>
-            {showEmail && (
-              <p className="text-zinc-500 text-sm mt-0.5">{profile.email}</p>
+            {editing ? (
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={editName}
+                  onChange={e => setEditName(e.target.value)}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-1.5 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500"
+                  placeholder="Display name"
+                  maxLength={60}
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSave}
+                    disabled={saving || !editName.trim()}
+                    className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-sm text-white font-medium transition-colors"
+                  >
+                    {saving ? 'Saving…' : 'Save'}
+                  </button>
+                  <button
+                    onClick={cancelEditing}
+                    disabled={saving}
+                    className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-sm text-zinc-300 font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-xl font-bold text-zinc-100">{profile.displayName}</h1>
+                  {profile.role !== 'user' && (
+                    <span className={`px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide ${
+                      profile.role === 'admin'
+                        ? 'bg-amber-500/20 text-amber-400'
+                        : 'bg-emerald-500/20 text-emerald-400'
+                    }`}>
+                      {profile.role}
+                    </span>
+                  )}
+                  {isOwnProfile && (
+                    <button
+                      onClick={startEditing}
+                      className="ml-auto text-xs text-zinc-500 hover:text-zinc-300 border border-zinc-700 hover:border-zinc-500 rounded px-2 py-0.5 transition-colors"
+                    >
+                      Edit profile
+                    </button>
+                  )}
+                </div>
+                {showEmail && (
+                  <p className="text-zinc-500 text-sm mt-0.5">{profile.email}</p>
+                )}
+                <p className="text-zinc-600 text-sm mt-1">
+                  Joined {profile.createdAt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                </p>
+              </>
             )}
-            <p className="text-zinc-600 text-sm mt-1">
-              Joined {profile.createdAt.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-            </p>
           </div>
         </div>
 
@@ -190,6 +326,7 @@ export function ProfilePage() {
         )}
       </div>
     </div>
+    </>
   )
 }
 

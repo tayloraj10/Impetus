@@ -1,14 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
-import { signInWithGoogle, signOut } from '../../services/authService'
+import { signOut } from '../../services/authService'
 import { Button } from '../ui/Button'
+import { SignInModal } from '../auth/SignInModal'
 
 export function Header() {
-  const { user, role, loading } = useAuth()
+  const { user, role, loading, emailLinkPending } = useAuth()
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const [searchValue, setSearchValue] = useState('')
+  const [authModalOpen, setAuthModalOpen] = useState(false)
+
+  useEffect(() => {
+    if (emailLinkPending) setAuthModalOpen(true)
+  }, [emailLinkPending])
 
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -20,11 +26,16 @@ export function Header() {
   }
 
   return (
+    <>
+    <SignInModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     <header className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
         <Link to="/" className="flex items-center gap-2.5 group shrink-0">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 group-hover:bg-emerald-400 transition-colors mt-px shrink-0"></span>
-          <span className="text-zinc-100 font-bold tracking-widest uppercase text-sm group-hover:text-emerald-400 transition-colors">Impetus</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 group-hover:bg-emerald-400 transition-colors shrink-0"></span>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-zinc-100 font-bold tracking-widest uppercase text-sm group-hover:text-emerald-400 transition-colors leading-none">Impetus</span>
+            <span className="text-[10px] text-zinc-600 font-mono tracking-wider leading-none">a force that makes<br />things happen faster</span>
+          </div>
         </Link>
 
         <nav className="hidden sm:flex items-center gap-1">
@@ -33,6 +44,7 @@ export function Header() {
           <NavLink to="/groups" active={pathname === '/groups'}>Groups</NavLink>
           <NavLink to="/map" active={pathname === '/map'}>Map</NavLink>
           <NavLink to="/calendar" active={pathname === '/calendar'}>Calendar</NavLink>
+          <NavLink to="/definitions" active={pathname === '/definitions'}>Definitions</NavLink>
           {(role === 'admin' || role === 'moderator') && (
             <NavLink to="/admin" active={pathname.startsWith('/admin')}>Admin</NavLink>
           )}
@@ -86,12 +98,13 @@ export function Header() {
                 <Button variant="ghost" size="sm" onClick={signOut}>Sign out</Button>
               </div>
             ) : (
-              <Button size="sm" onClick={signInWithGoogle}>Sign in</Button>
+              <Button size="sm" onClick={() => setAuthModalOpen(true)}>Sign in</Button>
             )
           )}
         </div>
       </div>
     </header>
+    </>
   )
 }
 
