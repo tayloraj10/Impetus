@@ -100,17 +100,21 @@ export function subscribePendingMapPins(callback: (pins: MapPin[]) => void): Uns
   })
 }
 
-export async function setMapPinModerationStatus(id: string, status: ModerationStatus) {
-  await updateDoc(doc(db, 'map_pins', id), { moderationStatus: status })
+export async function setMapPinModerationStatus(id: string, status: ModerationStatus, reason?: string) {
+  await updateDoc(doc(db, 'map_pins', id), {
+    moderationStatus: status,
+    ...(reason !== undefined ? { moderationReason: reason } : {}),
+  })
 }
 
-export async function softDeleteMapPin(id: string, removedBy: string, removedByDisplayName: string): Promise<void> {
+export async function softDeleteMapPin(id: string, removedBy: string, removedByDisplayName: string, reason?: string): Promise<void> {
   await Promise.all([
     updateDoc(doc(db, 'map_pins', id), {
       moderationStatus: 'removed',
       removedBy,
       removedByDisplayName,
       removedAt: serverTimestamp(),
+      ...(reason !== undefined ? { moderationReason: reason } : {}),
     }),
     deleteFeedItemByRefId(id),
   ])
@@ -131,6 +135,7 @@ export async function restoreMapPin(id: string): Promise<void> {
     removedBy: null,
     removedByDisplayName: null,
     removedAt: null,
+    moderationReason: null,
   })
 }
 

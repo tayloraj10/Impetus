@@ -124,17 +124,22 @@ export function subscribePendingGroups(callback: (groups: Group[]) => void): Uns
   })
 }
 
-export async function setGroupModerationStatus(id: string, status: import('../types').ModerationStatus) {
-  await updateDoc(doc(db, 'groups', id), { moderationStatus: status, updatedAt: serverTimestamp() })
+export async function setGroupModerationStatus(id: string, status: import('../types').ModerationStatus, reason?: string) {
+  await updateDoc(doc(db, 'groups', id), {
+    moderationStatus: status,
+    ...(reason !== undefined ? { moderationReason: reason } : {}),
+    updatedAt: serverTimestamp(),
+  })
 }
 
-export async function softDeleteGroup(id: string, removedBy: string, removedByDisplayName: string): Promise<void> {
+export async function softDeleteGroup(id: string, removedBy: string, removedByDisplayName: string, reason?: string): Promise<void> {
   await Promise.all([
     updateDoc(doc(db, 'groups', id), {
       moderationStatus: 'removed',
       removedBy,
       removedByDisplayName,
       removedAt: serverTimestamp(),
+      ...(reason !== undefined ? { moderationReason: reason } : {}),
       updatedAt: serverTimestamp(),
     }),
     deleteFeedItemByRefId(id),
@@ -156,6 +161,7 @@ export async function restoreGroup(id: string): Promise<void> {
     removedBy: null,
     removedByDisplayName: null,
     removedAt: null,
+    moderationReason: null,
     updatedAt: serverTimestamp(),
   })
 }

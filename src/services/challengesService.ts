@@ -120,13 +120,14 @@ export async function unflagChallenge(challengeId: string) {
   await updateDoc(doc(db, 'challenges', challengeId), { flags: increment(-1) })
 }
 
-export async function softDeleteChallenge(id: string, removedBy: string, removedByDisplayName: string): Promise<void> {
+export async function softDeleteChallenge(id: string, removedBy: string, removedByDisplayName: string, reason?: string): Promise<void> {
   await Promise.all([
     updateDoc(doc(db, 'challenges', id), {
       moderationStatus: 'removed',
       removedBy,
       removedByDisplayName,
       removedAt: serverTimestamp(),
+      ...(reason !== undefined ? { moderationReason: reason } : {}),
     }),
     deleteFeedItemByRefId(id),
   ])
@@ -147,6 +148,7 @@ export async function restoreChallenge(id: string): Promise<void> {
     removedBy: null,
     removedByDisplayName: null,
     removedAt: null,
+    moderationReason: null,
   })
 }
 

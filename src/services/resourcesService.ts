@@ -122,17 +122,21 @@ export function subscribePendingResources(callback: (resources: Resource[]) => v
   })
 }
 
-export async function setResourceModerationStatus(id: string, status: import('../types').ModerationStatus) {
-  await updateDoc(doc(db, 'resources', id), { moderationStatus: status })
+export async function setResourceModerationStatus(id: string, status: import('../types').ModerationStatus, reason?: string) {
+  await updateDoc(doc(db, 'resources', id), {
+    moderationStatus: status,
+    ...(reason !== undefined ? { moderationReason: reason } : {}),
+  })
 }
 
-export async function softDeleteResource(id: string, removedBy: string, removedByDisplayName: string): Promise<void> {
+export async function softDeleteResource(id: string, removedBy: string, removedByDisplayName: string, reason?: string): Promise<void> {
   await Promise.all([
     updateDoc(doc(db, 'resources', id), {
       moderationStatus: 'removed',
       removedBy,
       removedByDisplayName,
       removedAt: serverTimestamp(),
+      ...(reason !== undefined ? { moderationReason: reason } : {}),
     }),
     deleteFeedItemByRefId(id),
   ])
@@ -153,6 +157,7 @@ export async function restoreResource(id: string): Promise<void> {
     removedBy: null,
     removedByDisplayName: null,
     removedAt: null,
+    moderationReason: null,
   })
 }
 

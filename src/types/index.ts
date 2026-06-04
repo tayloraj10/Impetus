@@ -77,6 +77,7 @@ export interface Group {
   removedBy?: string
   removedByDisplayName?: string
   removedAt?: Date
+  moderationReason?: string
 }
 
 export interface Resource {
@@ -99,6 +100,7 @@ export interface Resource {
   removedBy?: string
   removedByDisplayName?: string
   removedAt?: Date
+  moderationReason?: string
 }
 
 export interface ImpetusEvent {
@@ -122,6 +124,7 @@ export interface ImpetusEvent {
   removedBy?: string
   removedByDisplayName?: string
   removedAt?: Date
+  moderationReason?: string
 }
 
 export interface Challenge {
@@ -141,6 +144,7 @@ export interface Challenge {
   removedBy?: string
   removedByDisplayName?: string
   removedAt?: Date
+  moderationReason?: string
 }
 
 export interface ChallengeSubmission {
@@ -227,6 +231,7 @@ export interface MapPin {
   removedBy?: string
   removedByDisplayName?: string
   removedAt?: Date
+  moderationReason?: string
 }
 
 export interface CreateMapPinInput {

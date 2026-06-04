@@ -116,7 +116,7 @@ function ResourceRow({ resource, role }: { resource: Resource; role: string | nu
         {canModerate && (
           <div className="ml-auto">
             <ModerateButtons
-              onSoftDelete={(uid, name) => softDeleteResource(resource.id, uid, name)}
+              onSoftDelete={(uid, name, reason) => softDeleteResource(resource.id, uid, name, reason)}
               onHardDelete={isAdmin ? () => deleteResource(resource.id, resource.topicId) : undefined}
             />
           </div>

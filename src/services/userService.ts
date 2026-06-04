@@ -46,7 +46,6 @@ export async function getUserContributions(uid: string): Promise<UserContributio
         removedAt: data.removedAt?.toDate(),
       } as Group
     })
-    .filter(g => g.moderationStatus !== 'removed')
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 
   const resources: Resource[] = resourcesSnap.docs
@@ -62,7 +61,6 @@ export async function getUserContributions(uid: string): Promise<UserContributio
         removedAt: data.removedAt?.toDate(),
       } as Resource
     })
-    .filter(r => r.moderationStatus !== 'removed')
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 
   const events: ImpetusEvent[] = eventsSnap.docs
@@ -80,7 +78,6 @@ export async function getUserContributions(uid: string): Promise<UserContributio
         removedAt: data.removedAt?.toDate(),
       } as ImpetusEvent
     })
-    .filter(e => e.moderationStatus !== 'removed')
     .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 
   const challengeSubmissions: ChallengeSubmission[] = submissionsSnap.docs

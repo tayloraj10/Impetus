@@ -221,7 +221,7 @@ function PinListItem({ pin, active, onFocus, role }: {
         <div className="flex items-center gap-1 shrink-0 pt-0.5" onClick={e => e.stopPropagation()}>
           {canModerate && (
             <ModerateButtons
-              onSoftDelete={(uid, name) => softDeleteMapPin(pin.id, uid, name)}
+              onSoftDelete={(uid, name, reason) => softDeleteMapPin(pin.id, uid, name, reason)}
               onHardDelete={isAdmin ? () => deleteMapPin(pin.id, pin.topicId) : undefined}
             />
           )}

@@ -118,7 +118,7 @@ function EventCard({ event, past = false, role }: { event: ImpetusEvent; past?: 
             {canModerate && (
               <div className="ml-auto">
                 <ModerateButtons
-                  onSoftDelete={(uid, name) => softDeleteEvent(event.id, uid, name)}
+                  onSoftDelete={(uid, name, reason) => softDeleteEvent(event.id, uid, name, reason)}
                   onHardDelete={isAdmin ? () => deleteEvent(event.id, event.topicId) : undefined}
                 />
               </div>

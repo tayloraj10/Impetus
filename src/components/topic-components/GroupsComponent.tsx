@@ -124,7 +124,7 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
               {canModerate && (
                 <span onClick={e => e.preventDefault()}>
                   <ModerateButtons
-                    onSoftDelete={(uid, name) => softDeleteGroup(group.id, uid, name)}
+                    onSoftDelete={(uid, name, reason) => softDeleteGroup(group.id, uid, name, reason)}
                     onHardDelete={isAdmin ? () => deleteGroup(group.id, group.topicId) : undefined}
                   />
                 </span>

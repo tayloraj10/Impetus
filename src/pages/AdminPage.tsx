@@ -755,19 +755,75 @@ function ModerationSection({ topicMap }: { topicMap: Record<string, string> }) {
   )
 }
 
+const MODERATION_REASONS = [
+  'Spam or self-promotion',
+  'Inaccurate or misleading',
+  'Inappropriate content',
+  'Duplicate submission',
+  'Broken link or outdated',
+  'Does not fit this topic',
+  'Other',
+]
+
+const SELECT_CLASS = 'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500 transition-colors'
+
 function ReviewActions({ acting, onApprove, onReject }: {
   acting: 'approve' | 'reject' | null
   onApprove: () => void
-  onReject: () => void
+  onReject: (reason: string) => void
 }) {
+  const [rejecting, setRejecting] = useState(false)
+  const [reason, setReason] = useState(MODERATION_REASONS[0])
+  const [otherText, setOtherText] = useState('')
+
+  function startReject() { setRejecting(true); setReason(MODERATION_REASONS[0]); setOtherText('') }
+  function cancelReject() { setRejecting(false) }
+
+  if (rejecting) {
+    const finalReason = reason === 'Other' ? otherText.trim() : reason
+    return (
+      <div className="pt-3 border-t border-zinc-800 space-y-3">
+        <p className="text-xs text-zinc-500">Select a reason — visible to the submitter.</p>
+        <select value={reason} onChange={e => setReason(e.target.value)} className={SELECT_CLASS}>
+          {MODERATION_REASONS.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+        {reason === 'Other' && (
+          <textarea
+            rows={2}
+            value={otherText}
+            onChange={e => setOtherText(e.target.value)}
+            placeholder="Describe the reason..."
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 resize-none transition-colors"
+          />
+        )}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={cancelReject}
+            disabled={acting !== null}
+            className="text-sm px-4 py-2 rounded-lg border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Back
+          </button>
+          <button
+            onClick={() => onReject(finalReason || 'Other')}
+            disabled={acting !== null || (reason === 'Other' && !otherText.trim())}
+            className="text-sm px-4 py-2 rounded-lg bg-red-700 hover:bg-red-600 text-white font-medium transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {acting === 'reject' ? '…' : 'Confirm Rejection'}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex justify-end gap-2 pt-2">
       <button
-        onClick={onReject}
+        onClick={startReject}
         disabled={acting !== null}
         className="text-sm px-4 py-2 rounded-lg border border-zinc-700 text-zinc-400 hover:border-red-700 hover:text-red-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {acting === 'reject' ? '…' : 'Reject'}
+        Reject
       </button>
       <button
         onClick={onApprove}
@@ -806,10 +862,10 @@ function GroupModerationCard({ group: g, topicName }: { group: Group; topicName?
 function GroupDetailModal({ group: g, topicName, open, onClose }: { group: Group; topicName?: string; open: boolean; onClose: () => void }) {
   const [acting, setActing] = useState<'approve' | 'reject' | null>(null)
 
-  async function act(action: 'approve' | 'reject') {
+  async function act(action: 'approve' | 'reject', reason?: string) {
     setActing(action)
     try {
-      await setGroupModerationStatus(g.id, action === 'approve' ? 'live' : 'rejected')
+      await setGroupModerationStatus(g.id, action === 'approve' ? 'live' : 'rejected', reason)
       onClose()
     } finally {
       setActing(null)
@@ -870,7 +926,7 @@ function GroupDetailModal({ group: g, topicName, open, onClose }: { group: Group
         <p className="text-zinc-600 text-xs pt-3 border-t border-zinc-800">
           Submitted by {g.submittedByDisplayName ?? 'Unknown'} · {formatTimeAgo(g.createdAt)}
         </p>
-        <ReviewActions acting={acting} onApprove={() => act('approve')} onReject={() => act('reject')} />
+        <ReviewActions acting={acting} onApprove={() => act('approve')} onReject={(reason) => act('reject', reason)} />
       </div>
     </Modal>
   )
@@ -911,10 +967,10 @@ function ResourceModerationCard({ resource: r, topicName }: { resource: Resource
 function ResourceDetailModal({ resource: r, topicName, open, onClose }: { resource: Resource; topicName?: string; open: boolean; onClose: () => void }) {
   const [acting, setActing] = useState<'approve' | 'reject' | null>(null)
 
-  async function act(action: 'approve' | 'reject') {
+  async function act(action: 'approve' | 'reject', reason?: string) {
     setActing(action)
     try {
-      await setResourceModerationStatus(r.id, action === 'approve' ? 'live' : 'rejected')
+      await setResourceModerationStatus(r.id, action === 'approve' ? 'live' : 'rejected', reason)
       onClose()
     } finally {
       setActing(null)
@@ -964,7 +1020,7 @@ function ResourceDetailModal({ resource: r, topicName, open, onClose }: { resour
         <p className="text-zinc-600 text-xs pt-3 border-t border-zinc-800">
           Submitted by {r.submittedByDisplayName ?? 'Unknown'} · {formatTimeAgo(r.createdAt)}
         </p>
-        <ReviewActions acting={acting} onApprove={() => act('approve')} onReject={() => act('reject')} />
+        <ReviewActions acting={acting} onApprove={() => act('approve')} onReject={(reason) => act('reject', reason)} />
       </div>
     </Modal>
   )
@@ -997,10 +1053,10 @@ function EventModerationCard({ event: e, topicName }: { event: ImpetusEvent; top
 function EventDetailModal({ event: e, topicName, open, onClose }: { event: ImpetusEvent; topicName?: string; open: boolean; onClose: () => void }) {
   const [acting, setActing] = useState<'approve' | 'reject' | null>(null)
 
-  async function act(action: 'approve' | 'reject') {
+  async function act(action: 'approve' | 'reject', reason?: string) {
     setActing(action)
     try {
-      await setEventModerationStatus(e.id, action === 'approve' ? 'live' : 'rejected')
+      await setEventModerationStatus(e.id, action === 'approve' ? 'live' : 'rejected', reason)
       onClose()
     } finally {
       setActing(null)
@@ -1060,7 +1116,7 @@ function EventDetailModal({ event: e, topicName, open, onClose }: { event: Impet
         <p className="text-zinc-600 text-xs pt-3 border-t border-zinc-800">
           Submitted by {e.submittedByDisplayName ?? 'Unknown'} · {formatTimeAgo(e.createdAt)}
         </p>
-        <ReviewActions acting={acting} onApprove={() => act('approve')} onReject={() => act('reject')} />
+        <ReviewActions acting={acting} onApprove={() => act('approve')} onReject={(reason) => act('reject', reason)} />
       </div>
     </Modal>
   )
@@ -1092,10 +1148,10 @@ function MapPinModerationCard({ pin: p, topicName }: { pin: MapPin; topicName?: 
 function MapPinDetailModal({ pin: p, topicName, open, onClose }: { pin: MapPin; topicName?: string; open: boolean; onClose: () => void }) {
   const [acting, setActing] = useState<'approve' | 'reject' | null>(null)
 
-  async function act(action: 'approve' | 'reject') {
+  async function act(action: 'approve' | 'reject', reason?: string) {
     setActing(action)
     try {
-      await setMapPinModerationStatus(p.id, action === 'approve' ? 'live' : 'rejected')
+      await setMapPinModerationStatus(p.id, action === 'approve' ? 'live' : 'rejected', reason)
       onClose()
     } finally {
       setActing(null)
@@ -1145,7 +1201,7 @@ function MapPinDetailModal({ pin: p, topicName, open, onClose }: { pin: MapPin; 
         <p className="text-zinc-600 text-xs pt-3 border-t border-zinc-800">
           Submitted by {p.submittedByDisplayName ?? 'Unknown'} · {formatTimeAgo(p.createdAt)}
         </p>
-        <ReviewActions acting={acting} onApprove={() => act('approve')} onReject={() => act('reject')} />
+        <ReviewActions acting={acting} onApprove={() => act('approve')} onReject={(reason) => act('reject', reason)} />
       </div>
     </Modal>
   )
@@ -1231,6 +1287,7 @@ function RemovedSection({ topicMap }: { topicMap: Record<string, string> }) {
                     topicName={topicMap[g.topicId]}
                     removedByDisplayName={g.removedByDisplayName}
                     removedAt={g.removedAt}
+                    moderationReason={g.moderationReason}
                     onRestore={() => restoreGroup(g.id)}
                     onDelete={() => deleteGroup(g.id, g.topicId)}
                   />
@@ -1247,6 +1304,7 @@ function RemovedSection({ topicMap }: { topicMap: Record<string, string> }) {
                     topicName={topicMap[r.topicId]}
                     removedByDisplayName={r.removedByDisplayName}
                     removedAt={r.removedAt}
+                    moderationReason={r.moderationReason}
                     onRestore={() => restoreResource(r.id)}
                     onDelete={() => deleteResource(r.id, r.topicId)}
                   />
@@ -1263,6 +1321,7 @@ function RemovedSection({ topicMap }: { topicMap: Record<string, string> }) {
                     topicName={topicMap[e.topicId]}
                     removedByDisplayName={e.removedByDisplayName}
                     removedAt={e.removedAt}
+                    moderationReason={e.moderationReason}
                     onRestore={() => restoreEvent(e.id)}
                     onDelete={() => deleteEvent(e.id, e.topicId)}
                   />
@@ -1279,6 +1338,7 @@ function RemovedSection({ topicMap }: { topicMap: Record<string, string> }) {
                     topicName={topicMap[c.topicId]}
                     removedByDisplayName={c.removedByDisplayName}
                     removedAt={c.removedAt}
+                    moderationReason={c.moderationReason}
                     onRestore={() => restoreChallenge(c.id)}
                     onDelete={() => deleteChallenge(c.id, c.topicId)}
                   />
@@ -1295,6 +1355,7 @@ function RemovedSection({ topicMap }: { topicMap: Record<string, string> }) {
                     topicName={topicMap[p.topicId]}
                     removedByDisplayName={p.removedByDisplayName}
                     removedAt={p.removedAt}
+                    moderationReason={p.moderationReason}
                     onRestore={() => restoreMapPin(p.id)}
                     onDelete={() => deleteMapPin(p.id, p.topicId)}
                   />
@@ -1308,13 +1369,14 @@ function RemovedSection({ topicMap }: { topicMap: Record<string, string> }) {
 }
 
 function RemovedCard({
-  type, title, topicName, removedByDisplayName, removedAt, onRestore, onDelete,
+  type, title, topicName, removedByDisplayName, removedAt, moderationReason, onRestore, onDelete,
 }: {
   type: string
   title: string
   topicName?: string
   removedByDisplayName?: string
   removedAt?: Date
+  moderationReason?: string
   onRestore: () => Promise<void>
   onDelete: () => Promise<void>
 }) {
@@ -1347,6 +1409,11 @@ function RemovedCard({
           Removed by <span className="text-zinc-400">{removedByDisplayName ?? 'Admin'}</span>
           {removedAt && <span> · {formatTimeAgo(removedAt)}</span>}
         </p>
+        {moderationReason && (
+          <p className="text-zinc-600 text-xs mt-0.5">
+            Reason: <span className="text-zinc-500">{moderationReason}</span>
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-2 shrink-0">
         <button

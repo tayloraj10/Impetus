@@ -128,17 +128,21 @@ export function subscribePendingEvents(callback: (events: ImpetusEvent[]) => voi
   })
 }
 
-export async function setEventModerationStatus(id: string, status: import('../types').ModerationStatus) {
-  await updateDoc(doc(db, 'events', id), { moderationStatus: status })
+export async function setEventModerationStatus(id: string, status: import('../types').ModerationStatus, reason?: string) {
+  await updateDoc(doc(db, 'events', id), {
+    moderationStatus: status,
+    ...(reason !== undefined ? { moderationReason: reason } : {}),
+  })
 }
 
-export async function softDeleteEvent(id: string, removedBy: string, removedByDisplayName: string): Promise<void> {
+export async function softDeleteEvent(id: string, removedBy: string, removedByDisplayName: string, reason?: string): Promise<void> {
   await Promise.all([
     updateDoc(doc(db, 'events', id), {
       moderationStatus: 'removed',
       removedBy,
       removedByDisplayName,
       removedAt: serverTimestamp(),
+      ...(reason !== undefined ? { moderationReason: reason } : {}),
     }),
     deleteFeedItemByRefId(id),
   ])
@@ -159,6 +163,7 @@ export async function restoreEvent(id: string): Promise<void> {
     removedBy: null,
     removedByDisplayName: null,
     removedAt: null,
+    moderationReason: null,
   })
 }
 

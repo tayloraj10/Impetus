@@ -84,6 +84,7 @@ export function ProfilePage() {
   const [editingEntry, setEditingEntry] = useState<ContributionEntry | null>(null)
 
   // Danger zone
+  const [moderationExpanded, setModerationExpanded] = useState(false)
   const [wipeConfirm, setWipeConfirm] = useState(false)
   const [deleteAccountConfirm, setDeleteAccountConfirm] = useState(false)
   const [dangerText, setDangerText] = useState('')
@@ -473,6 +474,57 @@ export function ProfilePage() {
         ))}
       </div>
 
+      {/* Moderation notice */}
+      {isOwnProfile && (() => {
+        const moderatedEntries = allEntries.filter(e =>
+          e.kind !== 'submission' &&
+          (e.item.moderationStatus === 'removed' || e.item.moderationStatus === 'rejected')
+        )
+        if (moderatedEntries.length === 0) return null
+        return (
+          <div className="mb-4">
+            <button
+              onClick={() => setModerationExpanded(v => !v)}
+              className="w-full px-3 py-2.5 bg-red-950/30 border border-red-900/40 rounded-lg text-sm text-red-400/80 text-left hover:bg-red-950/50 transition-colors flex items-center justify-between"
+            >
+              <span>
+                {moderatedEntries.length === 1
+                  ? '1 of your submissions was removed or rejected.'
+                  : `${moderatedEntries.length} of your submissions were removed or rejected.`}
+                {' '}<span className="text-red-400/50">{moderationExpanded ? 'Hide details ↑' : 'See details ↓'}</span>
+              </span>
+            </button>
+            {moderationExpanded && (
+              <div className="mt-1.5 space-y-1.5">
+                {moderatedEntries.map(entry => {
+                  const item = entry.item as Group | Resource | ImpetusEvent
+                  const title = entry.kind === 'group' ? entry.item.name : (entry.item as Resource | ImpetusEvent).title
+                  return (
+                    <div key={item.id} className="bg-zinc-900/70 border border-red-900/20 rounded-lg px-3 py-2.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <TypeBadge type={entry.kind as keyof typeof TYPE_STYLES} />
+                        <span className="text-sm text-zinc-300 truncate">{title}</span>
+                        <StatusBadge status={item.moderationStatus} />
+                      </div>
+                      {item.moderationReason && (
+                        <p className="text-xs text-zinc-400 mt-1.5">
+                          <span className="text-zinc-600">Reason:</span> {item.moderationReason}
+                        </p>
+                      )}
+                      {item.moderationStatus === 'removed' && item.removedByDisplayName && (
+                        <p className="text-xs text-zinc-600 mt-0.5">
+                          By {item.removedByDisplayName}{item.removedAt ? ` · ${formatTimeAgo(item.removedAt)}` : ''}
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )
+      })()}
+
       {/* Contributions */}
       <div className="space-y-2">
         {visibleEntries.length === 0 ? (
@@ -480,8 +532,10 @@ export function ProfilePage() {
         ) : (
           visibleEntries.map(entry => {
             const topic = topicMap[entry.item.topicId] as Topic | undefined
+            const modStatus = entry.kind !== 'submission' ? entry.item.moderationStatus : null
+            const isModerated = modStatus === 'removed' || modStatus === 'rejected'
             const cardActions: CardActionsProps = isOwnProfile ? {
-              onEdit: () => setEditingEntry(entry),
+              onEdit: isModerated ? undefined : () => setEditingEntry(entry),
               onDelete: () => handleDeleteEntry(entry),
             } : {}
             if (entry.kind === 'group') return <GroupCard key={entry.item.id} group={entry.item} topic={topic} {...cardActions} />
@@ -638,9 +692,17 @@ function TopicChip({ topic }: { topic?: Topic }) {
   )
 }
 
-function PendingBadge({ status }: { status: string }) {
-  if (status !== 'pending_review' && status !== 'pending_approval') return null
-  return <span className="text-xs text-amber-500/60">pending review</span>
+function StatusBadge({ status }: { status: string }) {
+  if (status === 'pending_review' || status === 'pending_approval') {
+    return <span className="text-xs text-amber-500/60">pending review</span>
+  }
+  if (status === 'rejected') {
+    return <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-red-500/10 text-red-400">rejected</span>
+  }
+  if (status === 'removed') {
+    return <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-red-500/10 text-red-400">removed</span>
+  }
+  return null
 }
 
 function PencilIcon() {
@@ -721,18 +783,30 @@ function CardActionButtons({ onEdit, onDelete }: CardActionsProps) {
 }
 
 function GroupCard({ group, topic, onEdit, onDelete }: { group: Group; topic?: Topic } & CardActionsProps) {
+  const isModerated = group.moderationStatus === 'removed' || group.moderationStatus === 'rejected'
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 flex items-start gap-3">
+    <div className={`bg-zinc-900 border rounded-lg px-4 py-3 flex items-start gap-3 ${isModerated ? 'border-red-900/40' : 'border-zinc-800'}`}>
       <TypeBadge type="group" />
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-zinc-200">{group.name}</span>
-          <PendingBadge status={group.moderationStatus} />
+          <span className={`text-sm font-medium ${isModerated ? 'text-zinc-400' : 'text-zinc-200'}`}>{group.name}</span>
+          <StatusBadge status={group.moderationStatus} />
         </div>
         {group.description && (
           <p className="text-xs text-zinc-500 mt-0.5 line-clamp-1">{group.description}</p>
         )}
         <TopicChip topic={topic} />
+        {group.moderationStatus === 'removed' && (
+          <p className="text-xs text-red-400/50 mt-1">
+            Removed{group.removedByDisplayName ? ` by ${group.removedByDisplayName}` : ''}{group.removedAt ? ` · ${formatTimeAgo(group.removedAt)}` : ''}
+            {group.moderationReason ? ` — ${group.moderationReason}` : ''}
+          </p>
+        )}
+        {group.moderationStatus === 'rejected' && (
+          <p className="text-xs text-red-400/50 mt-1">
+            Rejected by a moderator{group.moderationReason ? ` — ${group.moderationReason}` : ''}
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-1 shrink-0 mt-0.5">
         <span className="text-xs text-zinc-600">{formatTimeAgo(group.createdAt)}</span>
@@ -743,12 +817,13 @@ function GroupCard({ group, topic, onEdit, onDelete }: { group: Group; topic?: T
 }
 
 function ResourceCard({ resource, topic, onEdit, onDelete }: { resource: Resource; topic?: Topic } & CardActionsProps) {
+  const isModerated = resource.moderationStatus === 'removed' || resource.moderationStatus === 'rejected'
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 flex items-start gap-3">
+    <div className={`bg-zinc-900 border rounded-lg px-4 py-3 flex items-start gap-3 ${isModerated ? 'border-red-900/40' : 'border-zinc-800'}`}>
       <TypeBadge type="resource" />
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          {resource.url ? (
+          {resource.url && !isModerated ? (
             <a
               href={resource.url}
               target="_blank"
@@ -758,15 +833,26 @@ function ResourceCard({ resource, topic, onEdit, onDelete }: { resource: Resourc
               {resource.title}
             </a>
           ) : (
-            <span className="text-sm font-medium text-zinc-200">{resource.title}</span>
+            <span className={`text-sm font-medium ${isModerated ? 'text-zinc-400' : 'text-zinc-200'}`}>{resource.title}</span>
           )}
           <span className="text-xs text-zinc-600">{resource.type === 'other' && resource.typeOther ? resource.typeOther : RESOURCE_TYPE_LABEL[resource.type]}</span>
-          <PendingBadge status={resource.moderationStatus} />
+          <StatusBadge status={resource.moderationStatus} />
         </div>
         {resource.description && (
           <p className="text-xs text-zinc-500 mt-0.5 line-clamp-1">{resource.description}</p>
         )}
         <TopicChip topic={topic} />
+        {resource.moderationStatus === 'removed' && (
+          <p className="text-xs text-red-400/50 mt-1">
+            Removed{resource.removedByDisplayName ? ` by ${resource.removedByDisplayName}` : ''}{resource.removedAt ? ` · ${formatTimeAgo(resource.removedAt)}` : ''}
+            {resource.moderationReason ? ` — ${resource.moderationReason}` : ''}
+          </p>
+        )}
+        {resource.moderationStatus === 'rejected' && (
+          <p className="text-xs text-red-400/50 mt-1">
+            Rejected by a moderator{resource.moderationReason ? ` — ${resource.moderationReason}` : ''}
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-1 shrink-0 mt-0.5">
         <span className="text-xs text-zinc-600">{formatTimeAgo(resource.createdAt)}</span>
@@ -777,18 +863,30 @@ function ResourceCard({ resource, topic, onEdit, onDelete }: { resource: Resourc
 }
 
 function EventCard({ event, topic, onEdit, onDelete }: { event: ImpetusEvent; topic?: Topic } & CardActionsProps) {
+  const isModerated = event.moderationStatus === 'removed' || event.moderationStatus === 'rejected'
   return (
-    <div className="bg-zinc-900 border border-zinc-800 rounded-lg px-4 py-3 flex items-start gap-3">
+    <div className={`bg-zinc-900 border rounded-lg px-4 py-3 flex items-start gap-3 ${isModerated ? 'border-red-900/40' : 'border-zinc-800'}`}>
       <TypeBadge type="event" />
       <div className="flex-1 min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium text-zinc-200">{event.title}</span>
-          <PendingBadge status={event.moderationStatus} />
+          <span className={`text-sm font-medium ${isModerated ? 'text-zinc-400' : 'text-zinc-200'}`}>{event.title}</span>
+          <StatusBadge status={event.moderationStatus} />
         </div>
         <p className="text-xs text-zinc-500 mt-0.5">
           {formatDate(event.date)}{event.location ? ` · ${formatLocation(event.location)}` : ''}
         </p>
         <TopicChip topic={topic} />
+        {event.moderationStatus === 'removed' && (
+          <p className="text-xs text-red-400/50 mt-1">
+            Removed{event.removedByDisplayName ? ` by ${event.removedByDisplayName}` : ''}{event.removedAt ? ` · ${formatTimeAgo(event.removedAt)}` : ''}
+            {event.moderationReason ? ` — ${event.moderationReason}` : ''}
+          </p>
+        )}
+        {event.moderationStatus === 'rejected' && (
+          <p className="text-xs text-red-400/50 mt-1">
+            Rejected by a moderator{event.moderationReason ? ` — ${event.moderationReason}` : ''}
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-1 shrink-0 mt-0.5">
         <span className="text-xs text-zinc-600">{formatTimeAgo(event.createdAt)}</span>

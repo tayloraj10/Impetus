@@ -99,7 +99,7 @@ function ChallengeCard({ challenge, ended = false, role }: { challenge: Challeng
             {canModerate && (
               <div className="ml-auto">
                 <ModerateButtons
-                  onSoftDelete={(uid, name) => softDeleteChallenge(challenge.id, uid, name)}
+                  onSoftDelete={(uid, name, reason) => softDeleteChallenge(challenge.id, uid, name, reason)}
                   onHardDelete={isAdmin ? () => deleteChallenge(challenge.id, challenge.topicId) : undefined}
                 />
               </div>
