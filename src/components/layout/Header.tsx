@@ -3,7 +3,10 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
 import { signOut } from '../../services/authService'
 import { Button } from '../ui/Button'
+import { Badge } from '../ui/Badge'
 import { SignInModal } from '../auth/SignInModal'
+import { APP_VERSION, IS_BETA } from '../../config/app'
+import { SupportButton } from './SupportButton'
 
 export function Header() {
   const { user, role, loading, emailLinkPending } = useAuth()
@@ -30,13 +33,22 @@ export function Header() {
     <SignInModal open={authModalOpen} onClose={() => setAuthModalOpen(false)} />
     <header className="sticky top-0 z-40 border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-        <Link to="/" className="flex items-center gap-2.5 group shrink-0">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 group-hover:bg-emerald-400 transition-colors shrink-0"></span>
-          <div className="flex flex-col gap-0.5">
-            <span className="text-zinc-100 font-bold tracking-widest uppercase text-sm group-hover:text-emerald-400 transition-colors leading-none">Impetus</span>
-            <span className="text-[10px] text-zinc-600 font-mono tracking-wider leading-none">a force that makes<br />things happen faster</span>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link to="/" className="flex items-center gap-2.5 group">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 group-hover:bg-emerald-400 transition-colors shrink-0"></span>
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-zinc-100 font-bold tracking-widest uppercase text-sm group-hover:text-emerald-400 transition-colors leading-none">Impetus</span>
+                {IS_BETA && <Badge variant="amber">Beta</Badge>}
+              </div>
+              <span className="text-[10px] text-zinc-600 font-mono tracking-wider leading-none">a force that makes<br />things happen faster</span>
+            </div>
+          </Link>
+          <div className="flex flex-col items-center self-start pt-0.5">
+            <span className="text-[10px] text-zinc-600 font-mono leading-none">v{APP_VERSION}</span>
+            <SupportButton />
           </div>
-        </Link>
+        </div>
 
         <nav className="hidden sm:flex items-center gap-1">
           <NavLink to="/" active={pathname === '/'}>Feed</NavLink>

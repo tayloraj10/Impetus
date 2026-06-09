@@ -1,12 +1,14 @@
 {
   "name": "impetus",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npm run build && firebase deploy --only hosting",
+    "deploy:rules": "firebase deploy --only firestore:rules,storage"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.0",

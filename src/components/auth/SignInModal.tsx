@@ -69,6 +69,13 @@ export function SignInModal({ open, onClose }: Props) {
     }
   }, [open, emailLinkPending])
 
+  // Close as soon as auth succeeds — don't wait for signInWithPopup to fully settle
+  useEffect(() => {
+    if (open && user && step === 'main') {
+      handleClose()
+    }
+  }, [open, user, step])
+
   // Create the RecaptchaVerifier when the phone step becomes active.
   // Do NOT call render() — signInWithPhoneNumber calls verifier.verify() internally,
   // which handles reCAPTCHA execution. Calling render() manually causes a
@@ -119,7 +126,6 @@ export function SignInModal({ open, onClose }: Props) {
     setError('')
     try {
       await signInWithGoogle()
-      handleClose()
     } catch (e: any) {
       const msg = friendlyError(e.code)
       if (msg) setError(msg)
@@ -137,7 +143,6 @@ export function SignInModal({ open, onClose }: Props) {
       } else {
         await createAccountWithEmail(email, password, name.trim())
       }
-      handleClose()
     } catch (e: any) {
       setError(friendlyError(e.code))
       setLoading(false)

@@ -21,8 +21,7 @@ export type { RecaptchaVerifier, ConfirmationResult }
 const googleProvider = new GoogleAuthProvider()
 
 export async function signInWithGoogle(): Promise<void> {
-  const result = await signInWithPopup(auth, googleProvider)
-  ensureUserProfile(result.user)
+  await signInWithPopup(auth, googleProvider)
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<void> {
@@ -32,7 +31,6 @@ export async function signInWithEmail(email: string, password: string): Promise<
 export async function createAccountWithEmail(email: string, password: string, displayName: string): Promise<void> {
   const result = await firebaseCreateUser(auth, email, password)
   await updateProfile(result.user, { displayName })
-  ensureUserProfile(result.user)
 }
 
 export function createPhoneVerifier(container: HTMLElement): RecaptchaVerifier {
@@ -45,7 +43,6 @@ export async function sendPhoneOTP(phone: string, verifier: RecaptchaVerifier): 
 
 export async function confirmPhoneOTP(confirmation: ConfirmationResult, code: string): Promise<User> {
   const result = await confirmation.confirm(code)
-  ensureUserProfile(result.user)
   return result.user
 }
 
@@ -62,9 +59,8 @@ export function isEmailSignInLink(url: string): boolean {
 }
 
 export async function completeEmailSignIn(email: string, url: string): Promise<void> {
-  const result = await signInWithEmailLink(auth, email, url)
+  await signInWithEmailLink(auth, email, url)
   localStorage.removeItem('emailForSignIn')
-  ensureUserProfile(result.user)
 }
 
 export async function updateDisplayName(user: User, displayName: string): Promise<void> {
@@ -85,7 +81,7 @@ export function onAuthChange(callback: (user: User | null) => void): Unsubscribe
   return onAuthStateChanged(auth, callback)
 }
 
-async function ensureUserProfile(user: User): Promise<void> {
+export async function ensureUserProfile(user: User): Promise<void> {
   const ref = doc(db, 'users', user.uid)
   const snap = await getDoc(ref)
   if (!snap.exists()) {

@@ -2,7 +2,7 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() {
+    function isAuthed() {
       return request.auth != null;
     }
 
@@ -10,84 +10,120 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
     }
 
-    function isModerator() {
-      return isSignedIn() && userRole() in ['moderator', 'admin'];
+    function isMod() {
+      return isAuthed() && userRole() in ['moderator', 'admin'];
     }
 
     function isAdmin() {
-      return isSignedIn() && userRole() == 'admin';
+      return isAuthed() && userRole() == 'admin';
     }
 
-    // Topics — public read, admin write
-    match /topics/{topicId} {
+    function isOwner(field) {
+      return isAuthed() && resource.data[field] == request.auth.uid;
+    }
+
+    function noStatusChange() {
+      return !('moderationStatus' in request.resource.data.diff(resource.data).affectedKeys());
+    }
+
+    function onlyLikesOrFlags() {
+      return isAuthed() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'flags']);
+    }
+
+    match /topics/{id} {
       allow read: if true;
-      allow create, update, delete: if isAdmin();
+      allow write: if isAdmin();
     }
 
-    // Global feed — public read, anyone signed in can like; writes happen server-side via services
-    match /feed/{itemId} {
+    match /feed/{id} {
       allow read: if true;
-      allow write: if isSignedIn();
+      allow create: if isAuthed() && request.resource.data.submittedBy == request.auth.uid;
+      allow update, delete: if isAdmin();
     }
 
-    // Groups, Resources, Events — public read, signed-in users can create, moderators+ can update/delete
-    match /groups/{docId} {
+    match /groups/{id} {
       allow read: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if isModerator();
+      allow create: if isAuthed();
+      allow update: if isMod()
+        || onlyLikesOrFlags()
+        || (isOwner('submittedBy') && noStatusChange());
+      allow delete: if isMod() || isOwner('submittedBy');
     }
 
-    match /resources/{docId} {
+    match /resources/{id} {
       allow read: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if isModerator();
+      allow create: if isAuthed();
+      allow update: if isMod()
+        || onlyLikesOrFlags()
+        || (isOwner('submittedBy') && noStatusChange());
+      allow delete: if isMod() || isOwner('submittedBy');
     }
 
-    match /events/{docId} {
+    match /events/{id} {
       allow read: if true;
-      allow create: if isSignedIn();
-      allow update, delete: if isModerator();
+      allow create: if isAuthed();
+      allow update: if isMod()
+        || onlyLikesOrFlags()
+        || (isOwner('submittedBy') && noStatusChange());
+      allow delete: if isMod() || isOwner('submittedBy');
     }
 
-    // Challenges — public read, moderators+ can create/edit
-    match /challenges/{docId} {
+    match /map_pins/{id} {
       allow read: if true;
-      allow create, update, delete: if isModerator();
+      allow create: if isAuthed();
+      allow update: if isMod()
+        || onlyLikesOrFlags()
+        || (isOwner('submittedBy') && noStatusChange());
+      allow delete: if isMod() || isOwner('submittedBy');
     }
 
-    // Challenge submissions — public read, signed-in users submit their own
-    match /challenge_submissions/{docId} {
+    match /challenges/{id} {
       allow read: if true;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isModerator();
+      allow create, update: if isMod();
+      allow update: if isAuthed() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['participantCount']);
+      allow delete: if isAdmin();
     }
 
-    // Topic suggestions — signed-in users can create; moderators+ can read/update
-    match /topic_suggestions/{docId} {
-      allow create: if isSignedIn();
-      allow read, update, delete: if isModerator();
+    match /challenge_submissions/{id} {
+      allow read: if true;
+      allow create: if isAuthed() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin() || isOwner('userId');
     }
 
-    // Users — anyone signed in can read their own doc; admins can read/write all
+    match /topic_suggestions/{id} {
+      allow create: if isAuthed() && request.resource.data.suggestedBy == request.auth.uid;
+      allow read, update, delete: if isMod();
+    }
+
     match /users/{userId} {
-      allow read, update: if isSignedIn() && request.auth.uid == userId;
-      allow read, write: if isAdmin();
+      allow read: if isAuthed();
+      allow create: if isAuthed() && request.auth.uid == userId;
+      allow update: if (isAuthed() && request.auth.uid == userId &&
+        !('role' in request.resource.data.diff(resource.data).affectedKeys()))
+        || isAdmin();
+      allow delete: if isAdmin();
     }
 
-    // Definitions — public read, admin write; signed-in users can update rating fields only
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /definitions/{docId} {
       allow read: if true;
       allow create, delete: if isAdmin();
-      allow update: if isAdmin() ||
-        (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys()
+      allow update: if isMod() ||
+        (isAuthed() && request.resource.data.diff(resource.data).affectedKeys()
           .hasOnly(['ratingSum', 'ratingCount', 'updatedAt']));
     }
 
-    // Definition ratings — users can read/write their own rating documents
     match /definition_ratings/{ratingId} {
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read: if isAuthed() &&
+        (resource == null || resource.data.userId == request.auth.uid);
+      allow write: if isAuthed() &&
+        request.resource.data.userId == request.auth.uid;
     }
   }
 }

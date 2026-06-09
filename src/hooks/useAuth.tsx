@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { User } from 'firebase/auth'
-import { onAuthChange, getUserRole, isEmailSignInLink, completeEmailSignIn } from '../services/authService'
+import { onAuthChange, getUserRole, ensureUserProfile, isEmailSignInLink, completeEmailSignIn } from '../services/authService'
 
 interface AuthContextValue {
   user: User | null
@@ -23,16 +23,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const emailLinkUrlRef = useRef<string | null>(null)
 
   useEffect(() => {
-    return onAuthChange(async (u) => {
+    return onAuthChange((u) => {
       setUser(u)
       if (!u) {
         setRole('user')
         setLoading(false)
         return
       }
-      const r = await getUserRole(u.uid)
-      setRole(r)
       setLoading(false)
+      void ensureUserProfile(u)
+      void getUserRole(u.uid).then(setRole)
     })
   }, [])
 
