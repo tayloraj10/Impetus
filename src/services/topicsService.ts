@@ -1,7 +1,7 @@
 import {
   collection, doc, query, where, orderBy, limit, onSnapshot,
   addDoc, updateDoc, serverTimestamp, increment,
-  type Unsubscribe,
+  type Unsubscribe, type FieldValue,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import type { Topic } from '../types'
@@ -120,7 +120,7 @@ export function subscribeAllTopics(callback: (topics: Topic[]) => void): Unsubsc
   })
 }
 
-export async function updateTopic(id: string, data: Partial<Omit<Topic, 'id' | 'createdAt'>>) {
+export async function updateTopic(id: string, data: { [K in keyof Partial<Omit<Topic, 'id' | 'createdAt'>>]: Topic[K] | FieldValue }) {
   await updateDoc(doc(db, 'topics', id), {
     ...data,
     updatedAt: serverTimestamp(),

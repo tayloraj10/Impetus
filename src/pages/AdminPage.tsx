@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react'
+import { deleteField } from 'firebase/firestore'
 import { useAuth } from '../hooks/useAuth'
 import { useAllTopics } from '../hooks/useTopics'
 import { createTopic, updateTopic } from '../services/topicsService'
@@ -567,7 +568,7 @@ function EditTopicModal({ topic, onClose, topics }: { topic: Topic; onClose: () 
         ...(imageUrl !== undefined ? { imageUrl } : {}),
         ...(parentTopic
           ? { parentTopicId: parentTopic.id, parentTopicSlug: parentTopic.slug, parentTopicTitle: parentTopic.title }
-          : { parentTopicId: undefined, parentTopicSlug: undefined, parentTopicTitle: undefined }),
+          : { parentTopicId: deleteField(), parentTopicSlug: deleteField(), parentTopicTitle: deleteField() }),
       })
       onClose()
     } finally {
