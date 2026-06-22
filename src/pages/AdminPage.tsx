@@ -36,7 +36,7 @@ import { wipeContentCollections } from '../services/devService'
 import { Button } from '../components/ui/Button'
 import { Modal } from '../components/ui/Modal'
 import { formatTimeAgo, formatDate } from '../utils/time'
-import type { Topic, ComponentType, Group, Resource, ImpetusEvent, Challenge, MapPin, Definition, DefinitionCategory } from '../types'
+import type { Topic, ComponentType, Group, Resource, ImpetusEvent, Challenge, MapPin, MapPinType, Definition, DefinitionCategory } from '../types'
 
 const ALL_COMPONENTS: { key: ComponentType; label: string }[] = [
   { key: 'groups', label: 'Groups' },
@@ -394,6 +394,84 @@ function ComponentToggles({
   )
 }
 
+const PIN_TYPE_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#a855f7', '#06b6d4', '#84cc16', '#ec4899']
+
+function slugifyPinType(label: string): string {
+  return label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '')
+}
+
+function MapPinTypesEditor({ value, onChange }: { value: MapPinType[]; onChange: (v: MapPinType[]) => void }) {
+  const [label, setLabel] = useState('')
+
+  function add() {
+    const trimmed = label.trim()
+    if (!trimmed) return
+    const newValue = slugifyPinType(trimmed)
+    if (!newValue || value.some(t => t.value === newValue)) return
+    const color = PIN_TYPE_COLORS[value.length % PIN_TYPE_COLORS.length]
+    onChange([...value, { value: newValue, label: trimmed, color }])
+    setLabel('')
+  }
+
+  function remove(v: string) {
+    onChange(value.filter(t => t.value !== v))
+  }
+
+  function setColor(v: string, color: string) {
+    onChange(value.map(t => (t.value === v ? { ...t, color } : t)))
+  }
+
+  return (
+    <div>
+      <span className="block text-xs text-zinc-400 mb-2">Map Pin Types (optional)</span>
+      <p className="text-zinc-600 text-xs mb-2">
+        Define a status taxonomy for this topic's map pins, e.g. Built, Under Construction, Proposed, Cancelled. Leave empty for plain, untyped pins.
+      </p>
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {value.map(t => (
+            <span key={t.value} className="inline-flex items-center gap-1.5 text-xs bg-zinc-800 border border-zinc-700 text-zinc-300 px-2 py-1 rounded-full">
+              <input
+                type="color"
+                value={t.color}
+                onChange={e => setColor(t.value, e.target.value)}
+                className="w-3.5 h-3.5 rounded-full border-none cursor-pointer bg-transparent p-0"
+                title="Marker color"
+              />
+              {t.label}
+              <button
+                type="button"
+                onClick={() => remove(t.value)}
+                className="text-zinc-600 hover:text-red-400 transition-colors leading-none cursor-pointer"
+                title="Remove type"
+              >
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+      <div className="flex gap-2">
+        <input
+          value={label}
+          onChange={e => setLabel(e.target.value)}
+          onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
+          placeholder="Add a pin type…"
+          className={inputClass}
+        />
+        <button
+          type="button"
+          onClick={add}
+          disabled={!label.trim()}
+          className="shrink-0 text-sm px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          Add
+        </button>
+      </div>
+    </div>
+  )
+}
+
 function CreateTopicModal({ open, onClose, topics }: { open: boolean; onClose: () => void; topics: Topic[] }) {
   const { user } = useAuth()
   const [title, setTitle] = useState('')
@@ -401,6 +479,7 @@ function CreateTopicModal({ open, onClose, topics }: { open: boolean; onClose: (
   const [description, setDescription] = useState('')
   const [tags, setTags] = useState('')
   const [components, setComponents] = useState<ComponentType[]>(['groups', 'resources', 'events', 'challenges'])
+  const [mapPinTypes, setMapPinTypes] = useState<MapPinType[]>([])
   const [parentTopicId, setParentTopicId] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -444,11 +523,12 @@ function CreateTopicModal({ open, onClose, topics }: { open: boolean; onClose: (
         ...(imageUrl ? { imageUrl } : {}),
         ...(parentTopic ? { parentTopicId: parentTopic.id, parentTopicSlug: parentTopic.slug, parentTopicTitle: parentTopic.title } : {}),
         enabledComponents: components,
+        ...(mapPinTypes.length > 0 ? { mapPinTypes } : {}),
         status: 'active',
         createdBy: user.uid,
       })
       onClose()
-      setTitle(''); setSlug(''); setDescription(''); setTags(''); setComponents(['groups', 'resources', 'events', 'challenges']); setParentTopicId(''); clearImage()
+      setTitle(''); setSlug(''); setDescription(''); setTags(''); setComponents(['groups', 'resources', 'events', 'challenges']); setMapPinTypes([]); setParentTopicId(''); clearImage()
     } finally {
       setSubmitting(false)
     }
@@ -485,6 +565,9 @@ function CreateTopicModal({ open, onClose, topics }: { open: boolean; onClose: (
           </label>
         )}
         <ComponentToggles value={components} onChange={setComponents} />
+        {components.includes('maps') && (
+          <MapPinTypesEditor value={mapPinTypes} onChange={setMapPinTypes} />
+        )}
         <div>
           <span className="block text-xs text-zinc-400 mb-1">Cover Image</span>
           {imagePreview ? (
@@ -525,6 +608,7 @@ function EditTopicModal({ topic, onClose, topics }: { topic: Topic; onClose: () 
   const [description, setDescription] = useState(topic.description)
   const [tags, setTags] = useState(topic.tags.join(', '))
   const [components, setComponents] = useState<ComponentType[]>(topic.enabledComponents)
+  const [mapPinTypes, setMapPinTypes] = useState<MapPinType[]>(topic.mapPinTypes ?? [])
   const [status, setStatus] = useState<Topic['status']>(topic.status)
   const [parentTopicId, setParentTopicId] = useState(topic.parentTopicId ?? '')
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -564,6 +648,7 @@ function EditTopicModal({ topic, onClose, topics }: { topic: Topic; onClose: () 
         description,
         tags: tags.split(',').map(t => t.trim()).filter(Boolean),
         enabledComponents: components,
+        ...(mapPinTypes.length > 0 ? { mapPinTypes } : { mapPinTypes: deleteField() }),
         status,
         ...(imageUrl !== undefined ? { imageUrl } : {}),
         ...(parentTopic
@@ -610,6 +695,9 @@ function EditTopicModal({ topic, onClose, topics }: { topic: Topic; onClose: () 
           </select>
         </label>
         <ComponentToggles value={components} onChange={setComponents} />
+        {components.includes('maps') && (
+          <MapPinTypesEditor value={mapPinTypes} onChange={setMapPinTypes} />
+        )}
         <div>
           <span className="block text-xs text-zinc-400 mb-2">Status</span>
           <div className="flex gap-2">
@@ -1248,6 +1336,7 @@ function MapPinModerationCard({ pin: p, topicName }: { pin: MapPin; topicName?: 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
             <span className="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-medium">Map Pin</span>
+            {p.type && <span className="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">{p.type.replace(/_/g, ' ')}</span>}
             {topicName && <span className="text-xs text-zinc-500">{topicName}</span>}
           </div>
           <p className="text-zinc-100 text-sm font-medium truncate">{p.name}</p>
@@ -1288,16 +1377,22 @@ function MapPinDetailModal({ pin: p, topicName, open, onClose }: { pin: MapPin; 
             </div>
           )}
         </div>
+        {p.type && (
+          <div>
+            <p className="text-zinc-500 text-xs mb-1">Type</p>
+            <span className="text-xs bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded capitalize">{p.type.replace(/_/g, ' ')}</span>
+          </div>
+        )}
         {p.description && (
           <div>
             <p className="text-zinc-500 text-xs mb-1">Description</p>
             <p className="text-zinc-300 text-sm leading-relaxed">{p.description}</p>
           </div>
         )}
-        {p.address && (
+        {p.location && (
           <div>
-            <p className="text-zinc-500 text-xs mb-1">Address</p>
-            <p className="text-zinc-300 text-sm">{p.address}</p>
+            <p className="text-zinc-500 text-xs mb-1">Location</p>
+            <p className="text-zinc-300 text-sm">{formatLocation(p.location)}</p>
           </div>
         )}
         <div>

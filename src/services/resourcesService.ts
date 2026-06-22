@@ -7,7 +7,7 @@ import { db } from '../config/firebase'
 import type { Resource, CreateResourceInput } from '../types'
 import { createFeedItem, deleteFeedItemByRefId } from './feedService'
 import { incrementTopicCount, decrementTopicCount } from './topicsService'
-import { geocodeAddress, buildLocationQuery } from './geocodeService'
+import { geocodeAddress, isGeocodeable } from './geocodeService'
 
 function toResource(id: string, data: any): Resource {
   return {
@@ -49,8 +49,8 @@ export async function createResource(
   topicTitle: string,
   topicSlug: string,
 ): Promise<void> {
-  const locationQuery = input.location ? buildLocationQuery(input.location) : ''
-  const coordinates = locationQuery ? await geocodeAddress(locationQuery) : null
+  const canGeocode = input.location && isGeocodeable(input.location)
+  const coordinates = canGeocode ? await geocodeAddress(input.location!) : null
 
   const cleanInput = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined))
   const ref = await addDoc(collection(db, 'resources'), {

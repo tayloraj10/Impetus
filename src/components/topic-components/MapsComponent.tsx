@@ -2,13 +2,13 @@ import 'leaflet/dist/leaflet.css'
 import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
-import type { MapPin, CreateMapPinInput, Topic } from '../../types'
+import type { MapPin, MapPinType, CreateMapPinInput, StructuredLocation, Topic } from '../../types'
 import {
   subscribeMapPins, createMapPin,
   likeMapPin, unlikeMapPin, flagMapPin, unflagMapPin,
   softDeleteMapPin, deleteMapPin,
 } from '../../services/mapsService'
-import { geocodeAddress } from '../../services/geocodeService'
+import { geocodeAddress, isGeocodeable, formatLocation } from '../../services/geocodeService'
 import { useAuth } from '../../hooks/useAuth'
 import { useLiked, useFlag } from '../../hooks/useLiked'
 import { Button } from '../ui/Button'
@@ -17,22 +17,34 @@ import { Spinner } from '../ui/Spinner'
 import { ModerateButtons } from '../ui/ModerateButtons'
 import { FlagButton } from '../ui/FlagButton'
 import { Tooltip } from '../ui/Tooltip'
+import { LocationInput } from '../ui/LocationInput'
 
-const PIN_ICON = L.divIcon({
-  html: `<div style="width:13px;height:13px;background:#10b981;border:2px solid rgba(6,78,59,0.9);border-radius:50%;box-shadow:0 0 0 4px rgba(16,185,129,0.2),0 2px 6px rgba(0,0,0,0.4)"></div>`,
-  className: '',
-  iconSize: [13, 13],
-  iconAnchor: [6, 6],
-  popupAnchor: [0, -12],
-})
+const DEFAULT_PIN_COLOR = '#10b981'
 
-const FOCUSED_ICON = L.divIcon({
-  html: `<div style="width:17px;height:17px;background:#34d399;border:2.5px solid rgba(6,78,59,0.9);border-radius:50%;box-shadow:0 0 0 5px rgba(52,211,153,0.3),0 2px 8px rgba(0,0,0,0.5)"></div>`,
-  className: '',
-  iconSize: [17, 17],
-  iconAnchor: [8, 8],
-  popupAnchor: [0, -14],
-})
+const iconCache = new Map<string, L.DivIcon>()
+
+function pinIcon(color: string, focused: boolean): L.DivIcon {
+  const key = `${color}:${focused}`
+  const cached = iconCache.get(key)
+  if (cached) return cached
+  const icon = focused
+    ? L.divIcon({
+        html: `<div style="width:17px;height:17px;background:${color};border:2.5px solid rgba(6,78,59,0.9);border-radius:50%;box-shadow:0 0 0 5px ${color}4d,0 2px 8px rgba(0,0,0,0.5)"></div>`,
+        className: '',
+        iconSize: [17, 17],
+        iconAnchor: [8, 8],
+        popupAnchor: [0, -14],
+      })
+    : L.divIcon({
+        html: `<div style="width:13px;height:13px;background:${color};border:2px solid rgba(6,78,59,0.9);border-radius:50%;box-shadow:0 0 0 4px ${color}33,0 2px 6px rgba(0,0,0,0.4)"></div>`,
+        className: '',
+        iconSize: [13, 13],
+        iconAnchor: [6, 6],
+        popupAnchor: [0, -12],
+      })
+  iconCache.set(key, icon)
+  return icon
+}
 
 function FitBounds({ pins }: { pins: MapPin[] }) {
   const map = useMap()
@@ -83,6 +95,10 @@ export function MapsComponent({ topic }: { topic: Topic }) {
     setFlyTarget([pin.coordinates.lat, pin.coordinates.lng])
   }
 
+  function typeFor(pin: MapPin) {
+    return topic.mapPinTypes?.find(t => t.value === pin.type)
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -112,21 +128,26 @@ export function MapsComponent({ topic }: { topic: Topic }) {
               />
               <FitBounds pins={pins} />
               <FlyToPin target={flyTarget} />
-              {pins.map(pin => (
+              {pins.map(pin => {
+                const pinType = typeFor(pin)
+                return (
                 <Marker
                   key={pin.id}
                   position={[pin.coordinates.lat, pin.coordinates.lng]}
-                  icon={focusedId === pin.id ? FOCUSED_ICON : PIN_ICON}
+                  icon={pinIcon(pinType?.color ?? DEFAULT_PIN_COLOR, focusedId === pin.id)}
                   eventHandlers={{ click: () => setFocusedId(pin.id) }}
                 >
                   <Popup className="impetus-map-popup">
                     <div className="min-w-[160px] max-w-[220px]">
                       <p className="font-semibold text-sm leading-snug mb-1">{pin.name}</p>
+                      {pinType && (
+                        <p className="text-xs font-medium mb-1.5" style={{ color: pinType.color }}>{pinType.label}</p>
+                      )}
                       {pin.description && (
                         <p className="text-xs leading-relaxed mb-1.5 opacity-70">{pin.description}</p>
                       )}
-                      {pin.address && (
-                        <p className="text-xs opacity-50 mb-1">{pin.address}</p>
+                      {pin.location && (
+                        <p className="text-xs opacity-50 mb-1">{formatLocation(pin.location)}</p>
                       )}
                       {pin.url && (
                         <a
@@ -144,7 +165,8 @@ export function MapsComponent({ topic }: { topic: Topic }) {
                     </div>
                   </Popup>
                 </Marker>
-              ))}
+                )
+              })}
             </MapContainer>
           </div>
 
@@ -154,6 +176,7 @@ export function MapsComponent({ topic }: { topic: Topic }) {
                 <PinListItem
                   key={pin.id}
                   pin={pin}
+                  pinType={typeFor(pin)}
                   active={focusedId === pin.id}
                   onFocus={() => handlePinFocus(pin)}
                   role={role}
@@ -169,8 +192,9 @@ export function MapsComponent({ topic }: { topic: Topic }) {
   )
 }
 
-function PinListItem({ pin, active, onFocus, role }: {
+function PinListItem({ pin, pinType, active, onFocus, role }: {
   pin: MapPin
+  pinType?: MapPinType
   active: boolean
   onFocus: () => void
   role: string | null
@@ -189,32 +213,22 @@ function PinListItem({ pin, active, onFocus, role }: {
           : 'border-zinc-800 bg-zinc-900 hover:border-zinc-700 hover:bg-zinc-800/50'
       }`}
     >
-      <div className="flex items-start gap-2">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
-            <span className="text-zinc-100 text-sm font-medium truncate">{pin.name}</span>
-            {pin.moderationStatus === 'pending_review' && (
-              <Tooltip text="Visible but awaiting moderator review">
-                <span className="text-xs text-amber-500/80 font-medium shrink-0">Under Review</span>
-              </Tooltip>
-            )}
-          </div>
-          {pin.address && (
-            <p className="text-zinc-500 text-xs line-clamp-2 leading-relaxed">{pin.address}</p>
-          )}
-          {pin.description && (
-            <p className="text-zinc-400 text-xs mt-1 line-clamp-2 leading-relaxed">{pin.description}</p>
-          )}
-          {pin.url && (
-            <a
-              href={pin.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={e => e.stopPropagation()}
-              className="text-xs text-emerald-400 hover:text-emerald-300 mt-1 inline-block"
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-1.5 mb-0.5 flex-wrap min-w-0">
+          <span className="text-zinc-100 text-sm font-medium">{pin.name}</span>
+          {pinType && (
+            <span
+              className="inline-flex items-center gap-1 text-xs font-medium shrink-0"
+              style={{ color: pinType.color }}
             >
-              Source ↗
-            </a>
+              <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: pinType.color }} />
+              {pinType.label}
+            </span>
+          )}
+          {pin.moderationStatus === 'pending_review' && (
+            <Tooltip text="Visible but awaiting moderator review">
+              <span className="text-xs text-amber-500/80 font-medium shrink-0">Under Review</span>
+            </Tooltip>
           )}
         </div>
 
@@ -244,6 +258,23 @@ function PinListItem({ pin, active, onFocus, role }: {
           />
         </div>
       </div>
+      {pin.location && (
+        <p className="text-zinc-500 text-xs leading-relaxed">{formatLocation(pin.location)}</p>
+      )}
+      {pin.description && (
+        <p className="text-zinc-400 text-xs mt-1 leading-relaxed">{pin.description}</p>
+      )}
+      {pin.url && (
+        <a
+          href={pin.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          className="text-xs text-emerald-400 hover:text-emerald-300 mt-1 inline-block"
+        >
+          Source ↗
+        </a>
+      )}
     </button>
   )
 }
@@ -279,8 +310,9 @@ function Field({ label, children }: { label: string; children: React.ReactElemen
 function AddPinModal({ open, onClose, topic }: { open: boolean; onClose: () => void; topic: Topic }) {
   const { user } = useAuth()
   const [name, setName] = useState('')
+  const [type, setType] = useState('')
   const [description, setDescription] = useState('')
-  const [address, setAddress] = useState('')
+  const [location, setLocation] = useState<StructuredLocation>({})
   const [url, setUrl] = useState('')
   const [manualLat, setManualLat] = useState('')
   const [manualLng, setManualLng] = useState('')
@@ -290,7 +322,7 @@ function AddPinModal({ open, onClose, topic }: { open: boolean; onClose: () => v
   const [geocodeError, setGeocodeError] = useState(false)
 
   function reset() {
-    setName(''); setDescription(''); setAddress(''); setUrl('')
+    setName(''); setType(''); setDescription(''); setLocation({}); setUrl('')
     setManualLat(''); setManualLng(''); setShowManual(false)
     setGeocodeError(false); setDone(false)
   }
@@ -314,7 +346,11 @@ function AddPinModal({ open, onClose, topic }: { open: boolean; onClose: () => v
         if (isNaN(lat) || isNaN(lng)) return
         coordinates = { lat, lng }
       } else {
-        coordinates = await geocodeAddress(address)
+        if (!isGeocodeable(location)) {
+          setGeocodeError(true)
+          return
+        }
+        coordinates = await geocodeAddress(location)
         if (!coordinates) {
           setGeocodeError(true)
           setShowManual(true)
@@ -326,8 +362,9 @@ function AddPinModal({ open, onClose, topic }: { open: boolean; onClose: () => v
         topicId: topic.id,
         name,
         coordinates,
+        ...(type ? { type } : {}),
         ...(description ? { description } : {}),
-        ...(address ? { address } : {}),
+        ...(Object.keys(location).length ? { location } : {}),
         ...(url ? { url } : {}),
       }
 
@@ -359,31 +396,44 @@ function AddPinModal({ open, onClose, topic }: { open: boolean; onClose: () => v
           <input required value={name} onChange={e => setName(e.target.value)} placeholder="What is this location?" />
         </Field>
 
+        {topic.mapPinTypes && topic.mapPinTypes.length > 0 && (
+          <label className="block">
+            <span className="block text-xs text-zinc-400 mb-1">Type *</span>
+            <select
+              required
+              value={type}
+              onChange={e => setType(e.target.value)}
+              className={INPUT_CLASS}
+            >
+              <option value="" disabled>Select a type…</option>
+              {topic.mapPinTypes.map(t => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </label>
+        )}
+
         <Field label="Description">
           <textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional details…" />
         </Field>
 
-        {!showManual ? (
+        <div>
+          <span className="block text-xs text-zinc-400 mb-1">Location *</span>
+          <LocationInput
+            value={location}
+            onChange={loc => { setLocation(loc); setGeocodeError(false) }}
+            showStreet
+            required
+          />
+        </div>
+        {geocodeError && (
+          <p className="text-amber-400 text-xs -mt-2">
+            Couldn't locate that — enter coordinates manually below.
+          </p>
+        )}
+
+        {showManual && (
           <>
-            <Field label="Address / Location *">
-              <input
-                required
-                value={address}
-                onChange={e => { setAddress(e.target.value); setGeocodeError(false) }}
-                placeholder="123 Main St, City, State, Country"
-              />
-            </Field>
-            {geocodeError && (
-              <p className="text-amber-400 text-xs -mt-2">
-                Couldn't locate that address — enter coordinates manually below.
-              </p>
-            )}
-          </>
-        ) : (
-          <>
-            <Field label="Address (for display)">
-              <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Human-readable location label" />
-            </Field>
             <div className="grid grid-cols-2 gap-2">
               <Field label="Latitude *">
                 <input
@@ -411,7 +461,7 @@ function AddPinModal({ open, onClose, topic }: { open: boolean; onClose: () => v
               onClick={() => { setShowManual(false); setGeocodeError(false) }}
               className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
             >
-              ← Use address geocoding instead
+              ← Use location fields instead
             </button>
           </>
         )}

@@ -3,6 +3,7 @@ import type { CategorySlug } from './dogs'
 export type ComponentType = 'groups' | 'resources' | 'events' | 'challenges' | 'maps'
 
 export interface StructuredLocation {
+  street?: string
   city?: string
   state?: string
   zipCode?: string
@@ -10,6 +11,12 @@ export interface StructuredLocation {
 }
 
 export type ModerationStatus = 'live' | 'pending_review' | 'pending_approval' | 'rejected' | 'removed'
+
+export interface MapPinType {
+  value: string
+  label: string
+  color: string
+}
 
 export interface Topic {
   id: string
@@ -20,6 +27,8 @@ export interface Topic {
   tags: string[]
   imageUrl?: string
   enabledComponents: ComponentType[]
+  /** Admin-defined status taxonomy for this topic's map pins (e.g. Data Centers: Built/Under Construction/Proposed/Cancelled). Empty/unset = untyped pins. */
+  mapPinTypes?: MapPinType[]
   status: 'active' | 'pending' | 'archived'
   createdBy: string
   createdAt: Date
@@ -231,8 +240,10 @@ export interface MapPin {
   topicId: string
   name: string
   description?: string
-  address?: string
+  location?: StructuredLocation
   url?: string
+  /** Value matching one of the topic's `mapPinTypes`, if defined. */
+  type?: string
   coordinates: { lat: number; lng: number }
   moderationStatus: ModerationStatus
   submittedBy: string
@@ -250,8 +261,9 @@ export interface CreateMapPinInput {
   topicId: string
   name: string
   description?: string
-  address?: string
+  location?: StructuredLocation
   url?: string
+  type?: string
   coordinates: { lat: number; lng: number }
 }
 
