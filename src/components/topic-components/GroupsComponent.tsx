@@ -112,7 +112,9 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
             <div className="min-w-0">
               <span className="text-zinc-100 font-semibold text-sm leading-snug truncate block">{group.name}</span>
               {group.category && (
-                <span className="text-xs text-zinc-500">{group.category}</span>
+                <span className="text-xs text-zinc-500">
+                  {group.category === '__other__' && group.categoryOther ? group.categoryOther : group.category}
+                </span>
               )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -218,6 +220,7 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
     name: '',
     description: '',
     category: '',
+    categoryOther: '',
     location: { city: '', state: '', zipCode: '', country: '' },
     socialLinks: { website: '', instagram: '', tiktok: '', youtube: '', facebook: '', twitter: '' },
   })
@@ -285,11 +288,29 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
           <textarea required rows={3} value={form.description} onChange={e => set('description', e.target.value)} placeholder="What does this group do?" />
         </Field>
         <Field label="Category">
-          <select value={form.category ?? ''} onChange={e => set('category', e.target.value)}>
+          <select
+            value={form.category ?? ''}
+            onChange={e => {
+              const value = e.target.value
+              setForm(f => ({ ...f, category: value, categoryOther: value === '__other__' ? f.categoryOther : undefined }))
+            }}
+          >
             <option value="">Select a category...</option>
-            {categories.map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
+            {categories.filter(c => c.label.trim().toLowerCase() !== 'other').map(c => <option key={c.id} value={c.label}>{c.label}</option>)}
+            <option value="__other__">Other</option>
           </select>
         </Field>
+        {form.category === '__other__' && (
+          <Field label="Specify category *">
+            <input
+              required
+              value={form.categoryOther ?? ''}
+              onChange={e => set('categoryOther', e.target.value)}
+              placeholder="What category is this?"
+              maxLength={50}
+            />
+          </Field>
+        )}
 
         <div>
           <span className="block text-xs text-zinc-400 mb-1">Logo / Image</span>

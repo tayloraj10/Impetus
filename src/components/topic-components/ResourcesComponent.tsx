@@ -9,6 +9,7 @@ import {
 } from '../../services/resourcesService'
 import { useAuth } from '../../hooks/useAuth'
 import { useLiked, useFlag } from '../../hooks/useLiked'
+import { useCategories } from '../../hooks/useGroupCategories'
 import { Badge } from '../ui/Badge'
 import { Button } from '../ui/Button'
 import { FlagButton } from '../ui/FlagButton'
@@ -200,8 +201,12 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   )
 }
 
+const BASE_TYPE_KEYS = ['article', 'video', 'government', 'tool', 'guide', 'content_creator'] as const
+
 function AddResourceModal({ open, onClose, topic }: { open: boolean; onClose: () => void; topic: Topic }) {
   const { user } = useAuth()
+  const { categories } = useCategories('resource_type')
+  const approvedLabels = categories.filter(c => (c.status ?? 'approved') === 'approved').map(c => c.label)
   const [form, setForm] = useState<CreateResourceInput>({
     topicId: topic.id,
     title: '',
@@ -267,10 +272,18 @@ function AddResourceModal({ open, onClose, topic }: { open: boolean; onClose: ()
         <label className="block">
           <span className="block text-xs text-zinc-400 mb-1">Type *</span>
           <select
-            value={form.type}
+            value={form.type === 'other' && form.typeOther && approvedLabels.some(l => l.toLowerCase() === (form.typeOther ?? '').trim().toLowerCase())
+              ? approvedLabels.find(l => l.toLowerCase() === (form.typeOther ?? '').trim().toLowerCase())
+              : form.type}
             onChange={e => {
-              const t = e.target.value as Resource['type']
-              setForm(f => ({ ...f, type: t, typeOther: t !== 'other' ? undefined : f.typeOther }))
+              const value = e.target.value
+              if ((BASE_TYPE_KEYS as readonly string[]).includes(value)) {
+                setForm(f => ({ ...f, type: value as Resource['type'], typeOther: undefined }))
+              } else if (value === 'other') {
+                setForm(f => ({ ...f, type: 'other', typeOther: f.typeOther }))
+              } else {
+                setForm(f => ({ ...f, type: 'other', typeOther: value }))
+              }
             }}
             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:border-emerald-500 transition-colors"
           >
@@ -280,10 +293,11 @@ function AddResourceModal({ open, onClose, topic }: { open: boolean; onClose: ()
             <option value="tool">Tool</option>
             <option value="guide">Guide</option>
             <option value="content_creator">Content Creator</option>
+            {approvedLabels.map(label => <option key={label} value={label}>{label}</option>)}
             <option value="other">Other</option>
           </select>
         </label>
-        {form.type === 'other' && (
+        {form.type === 'other' && !approvedLabels.some(l => l.toLowerCase() === (form.typeOther ?? '').trim().toLowerCase()) && (
           <label className="block">
             <span className="block text-xs text-zinc-400 mb-1">Specify type *</span>
             <input

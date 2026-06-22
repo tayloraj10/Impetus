@@ -50,6 +50,7 @@ export async function createDefinition(input: CreateDefinitionInput) {
     extendedNote: input.extendedNote?.trim() || null,
     example: input.example?.trim() || null,
     category: input.category,
+    categoryOther: input.category === 'other' ? (input.categoryOther?.trim() || null) : null,
     relatedTerms: input.relatedTerms ?? [],
     createdBy: input.createdBy,
     status: 'live',
@@ -62,7 +63,7 @@ export async function createDefinition(input: CreateDefinitionInput) {
 
 export async function updateDefinition(
   id: string,
-  data: Partial<Pick<Definition, 'term' | 'definition' | 'extendedNote' | 'example' | 'category' | 'relatedTerms' | 'status'>>,
+  data: Partial<Pick<Definition, 'term' | 'definition' | 'extendedNote' | 'example' | 'category' | 'categoryOther' | 'relatedTerms' | 'status'>>,
 ) {
   await updateDoc(doc(db, 'definitions', id), {
     ...data,

@@ -58,6 +58,7 @@ export interface Group {
   name: string
   description: string
   category?: string
+  categoryOther?: string
   imageUrl?: string
   location?: StructuredLocation
   coordinates?: { latitude: number; longitude: number }
@@ -189,6 +190,7 @@ export interface CreateGroupInput {
   name: string
   description: string
   category?: string
+  categoryOther?: string
   imageUrl?: string
   location?: Group['location']
   socialLinks?: Group['socialLinks']
@@ -198,6 +200,8 @@ export interface CreateGroupInput {
 export interface Category {
   id: string
   label: string
+  kind?: string
+  status?: 'approved' | 'rejected'
   createdAt: Date
 }
 
@@ -260,6 +264,7 @@ export interface Definition {
   extendedNote?: string | null
   example?: string | null
   category: DefinitionCategory
+  categoryOther?: string
   relatedTerms: string[]
   createdBy: string
   createdAt: Date
@@ -275,6 +280,7 @@ export interface CreateDefinitionInput {
   extendedNote?: string
   example?: string
   category: DefinitionCategory
+  categoryOther?: string
   relatedTerms?: string[]
   createdBy: string
 }

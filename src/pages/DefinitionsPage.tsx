@@ -193,7 +193,7 @@ function DefinitionCard({
   onRate: ((rating: number) => void) | null
   onRelatedClick: (term: string) => void
 }) {
-  const { term, category, definition: defText, extendedNote, example, relatedTerms, ratingSum, ratingCount } = definition
+  const { term, category, categoryOther, definition: defText, extendedNote, example, relatedTerms, ratingSum, ratingCount } = definition
   const average = ratingCount > 0 ? ratingSum / ratingCount : null
 
   return (
@@ -201,7 +201,7 @@ function DefinitionCard({
       <div className="flex items-start justify-between gap-3 mb-3">
         <h2 className="text-lg font-semibold text-zinc-100 leading-tight">{term}</h2>
         <span className={`shrink-0 text-xs font-medium px-2.5 py-1 rounded-full border ${categoryStyle(category)}`}>
-          {categoryLabel(category)}
+          {category === 'other' && categoryOther ? categoryOther : categoryLabel(category)}
         </span>
       </div>
 

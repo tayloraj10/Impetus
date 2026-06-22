@@ -4,17 +4,19 @@ import { useAllTopics } from '../hooks/useTopics'
 import { createTopic, updateTopic } from '../services/topicsService'
 import { formatLocation } from '../services/geocodeService'
 import { useCategories } from '../hooks/useGroupCategories'
-import { addCategory, deleteCategory, seedDefaultCategories } from '../services/categoriesService'
+import { addCategory, deleteCategory, seedDefaultCategories, rejectCategorySuggestion, isApproved, isRejected } from '../services/categoriesService'
 import {
   subscribeAllDefinitions, createDefinition, updateDefinition,
 } from '../services/definitionsService'
 import {
   subscribePendingGroups, setGroupModerationStatus,
   subscribeRemovedGroups, restoreGroup, deleteGroup,
+  subscribeAllGroups,
 } from '../services/groupsService'
 import {
   subscribePendingResources, setResourceModerationStatus,
   subscribeRemovedResources, restoreResource, deleteResource,
+  subscribeAllResourcesGlobal,
 } from '../services/resourcesService'
 import {
   subscribePendingEvents, setEventModerationStatus,
@@ -75,6 +77,7 @@ export function AdminPage() {
       {import.meta.env.DEV && isAdmin && <SeedPanel />}
 
       <ModerationSection topicMap={topicMap} />
+      <CategorySuggestionsPanel />
       <RemovedSection topicMap={topicMap} />
 
       {isAdmin && (
@@ -755,6 +758,82 @@ function ModerationSection({ topicMap }: { topicMap: Record<string, string> }) {
   )
 }
 
+type CategorySuggestion = {
+  key: string
+  label: string
+  kind: string
+  kindLabel: string
+  context: string
+}
+
+function CategorySuggestionsPanel() {
+  const [groups, setGroups] = useState<Group[]>([])
+  const [resources, setResources] = useState<Resource[]>([])
+  const [definitions, setDefinitions] = useState<Definition[]>([])
+  const { categories: groupCats } = useCategories('group')
+  const { categories: resourceCats } = useCategories('resource_type')
+  const { categories: defCats } = useCategories('definition_category')
+  const [busyKey, setBusyKey] = useState<string | null>(null)
+
+  useEffect(() => subscribeAllGroups(setGroups), [])
+  useEffect(() => subscribeAllResourcesGlobal(setResources), [])
+  useEffect(() => subscribeAllDefinitions(setDefinitions), [])
+
+  const suggestions: CategorySuggestion[] = useMemo(() => {
+    const list: CategorySuggestion[] = []
+    for (const g of groups) {
+      if (g.category === '__other__' && g.categoryOther && !isApproved(groupCats, g.categoryOther) && !isRejected(groupCats, g.categoryOther)) {
+        list.push({ key: `group__${g.id}`, label: g.categoryOther, kind: 'group', kindLabel: 'Group', context: g.name })
+      }
+    }
+    for (const r of resources) {
+      if (r.type === 'other' && r.typeOther && !isApproved(resourceCats, r.typeOther) && !isRejected(resourceCats, r.typeOther)) {
+        list.push({ key: `resource__${r.id}`, label: r.typeOther, kind: 'resource_type', kindLabel: 'Resource', context: r.title })
+      }
+    }
+    for (const d of definitions) {
+      if (d.category === 'other' && d.categoryOther && !isApproved(defCats, d.categoryOther) && !isRejected(defCats, d.categoryOther)) {
+        list.push({ key: `definition__${d.id}`, label: d.categoryOther, kind: 'definition_category', kindLabel: 'Definition', context: d.term })
+      }
+    }
+    return list
+  }, [groups, resources, definitions, groupCats, resourceCats, defCats])
+
+  if (suggestions.length === 0) return null
+
+  async function handle(s: CategorySuggestion, action: 'approve' | 'dismiss') {
+    setBusyKey(s.key)
+    try {
+      if (action === 'approve') await addCategory(s.label, s.kind)
+      else await rejectCategorySuggestion(s.label, s.kind)
+    } finally {
+      setBusyKey(null)
+    }
+  }
+
+  return (
+    <section className="mb-8">
+      <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-4">
+        Category Suggestions<span className="ml-2 text-amber-400">({suggestions.length})</span>
+      </h2>
+      <div className="space-y-2">
+        {suggestions.map(s => (
+          <div key={s.key} className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center justify-between gap-3 flex-wrap">
+            <p className="text-amber-300 text-sm">
+              🆕 <span className="text-zinc-400">{s.kindLabel}</span> · <span className="font-semibold">"{s.label}"</span>
+              <span className="text-zinc-500 text-xs ml-2">{s.context}</span>
+            </p>
+            <div className="flex gap-2 shrink-0">
+              <Button size="sm" variant="secondary" disabled={busyKey === s.key} onClick={() => handle(s, 'dismiss')}>Dismiss</Button>
+              <Button size="sm" disabled={busyKey === s.key} onClick={() => handle(s, 'approve')}>Approve as category</Button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 const MODERATION_REASONS = [
   'Spam or self-promotion',
   'Inaccurate or misleading',
@@ -859,6 +938,35 @@ function GroupModerationCard({ group: g, topicName }: { group: Group; topicName?
   )
 }
 
+function CategorySuggestionCallout({ label, kind }: { label: string; kind: string }) {
+  const { categories } = useCategories(kind)
+  const [busy, setBusy] = useState<'approve' | 'dismiss' | null>(null)
+
+  if (isApproved(categories, label) || isRejected(categories, label)) return null
+
+  async function handle(action: 'approve' | 'dismiss') {
+    setBusy(action)
+    try {
+      if (action === 'approve') await addCategory(label, kind)
+      else await rejectCategorySuggestion(label, kind)
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 flex items-center justify-between gap-3 flex-wrap">
+      <p className="text-amber-300 text-sm">
+        🆕 New category suggested: <span className="font-semibold">"{label}"</span>
+      </p>
+      <div className="flex gap-2 shrink-0">
+        <Button size="sm" variant="secondary" disabled={!!busy} onClick={() => handle('dismiss')}>Dismiss</Button>
+        <Button size="sm" disabled={!!busy} onClick={() => handle('approve')}>Approve as category</Button>
+      </div>
+    </div>
+  )
+}
+
 function GroupDetailModal({ group: g, topicName, open, onClose }: { group: Group; topicName?: string; open: boolean; onClose: () => void }) {
   const [acting, setActing] = useState<'approve' | 'reject' | null>(null)
 
@@ -926,6 +1034,9 @@ function GroupDetailModal({ group: g, topicName, open, onClose }: { group: Group
         <p className="text-zinc-600 text-xs pt-3 border-t border-zinc-800">
           Submitted by {g.submittedByDisplayName ?? 'Unknown'} · {formatTimeAgo(g.createdAt)}
         </p>
+        {g.category === '__other__' && g.categoryOther && (
+          <CategorySuggestionCallout label={g.categoryOther} kind="group" />
+        )}
         <ReviewActions acting={acting} onApprove={() => act('approve')} onReject={(reason) => act('reject', reason)} />
       </div>
     </Modal>
@@ -1020,6 +1131,9 @@ function ResourceDetailModal({ resource: r, topicName, open, onClose }: { resour
         <p className="text-zinc-600 text-xs pt-3 border-t border-zinc-800">
           Submitted by {r.submittedByDisplayName ?? 'Unknown'} · {formatTimeAgo(r.createdAt)}
         </p>
+        {r.type === 'other' && r.typeOther && (
+          <CategorySuggestionCallout label={r.typeOther} kind="resource_type" />
+        )}
         <ReviewActions acting={acting} onApprove={() => act('approve')} onReject={(reason) => act('reject', reason)} />
       </div>
     </Modal>
@@ -1541,7 +1655,7 @@ function DefinitionAdminRow({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5 flex-wrap">
           <span className={`text-xs font-medium capitalize ${DEF_CATEGORY_COLORS[definition.category]}`}>
-            {definition.category}
+            {definition.category === 'other' && definition.categoryOther ? definition.categoryOther : definition.category}
           </span>
           {avg && (
             <span className="text-xs text-amber-500">★ {avg} ({definition.ratingCount})</span>
@@ -1591,8 +1705,11 @@ function DefinitionModal({
   onClose: () => void
 }) {
   const isEdit = !!definition
+  const { categories: defCategories } = useCategories('definition_category')
+  const approvedDefLabels = defCategories.filter(c => (c.status ?? 'approved') === 'approved').map(c => c.label)
   const [term, setTerm] = useState(definition?.term ?? '')
   const [category, setCategory] = useState<DefinitionCategory>(definition?.category ?? 'political')
+  const [categoryOther, setCategoryOther] = useState(definition?.categoryOther ?? '')
   const [defText, setDefText] = useState(definition?.definition ?? '')
   const [extendedNote, setExtendedNote] = useState(definition?.extendedNote ?? '')
   const [example, setExample] = useState(definition?.example ?? '')
@@ -1614,6 +1731,7 @@ function DefinitionModal({
           extendedNote: extendedNote.trim() || null,
           example: example.trim() || null,
           category,
+          categoryOther: category === 'other' ? (categoryOther.trim() || undefined) : undefined,
           relatedTerms,
         })
       } else {
@@ -1623,6 +1741,7 @@ function DefinitionModal({
           extendedNote: extendedNote || undefined,
           example: example || undefined,
           category,
+          categoryOther: category === 'other' ? (categoryOther.trim() || undefined) : undefined,
           relatedTerms,
           createdBy,
         })
@@ -1652,15 +1771,43 @@ function DefinitionModal({
           <div className="col-span-2 sm:col-span-1">
             <label className="block text-xs text-zinc-400 mb-1">Category *</label>
             <select
-              value={category}
-              onChange={e => setCategory(e.target.value as DefinitionCategory)}
+              value={category === 'other' && categoryOther && approvedDefLabels.some(l => l.toLowerCase() === categoryOther.trim().toLowerCase())
+                ? approvedDefLabels.find(l => l.toLowerCase() === categoryOther.trim().toLowerCase())
+                : category}
+              onChange={e => {
+                const value = e.target.value
+                if (DEF_CATEGORIES.some(c => c.key !== 'other' && c.key === value)) {
+                  setCategory(value as DefinitionCategory)
+                  setCategoryOther('')
+                } else if (value === 'other') {
+                  setCategory('other')
+                } else {
+                  setCategory('other')
+                  setCategoryOther(value)
+                }
+              }}
               className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none transition-colors cursor-pointer"
             >
-              {DEF_CATEGORIES.map(c => (
+              {DEF_CATEGORIES.filter(c => c.key !== 'other').map(c => (
                 <option key={c.key} value={c.key}>{c.label}</option>
               ))}
+              {approvedDefLabels.map(label => <option key={label} value={label}>{label}</option>)}
+              <option value="other">Other</option>
             </select>
           </div>
+          {category === 'other' && !approvedDefLabels.some(l => l.toLowerCase() === categoryOther.trim().toLowerCase()) && (
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs text-zinc-400 mb-1">Specify category *</label>
+              <input
+                required
+                value={categoryOther}
+                onChange={e => setCategoryOther(e.target.value)}
+                placeholder="e.g. Historical, Technical..."
+                maxLength={50}
+                className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors"
+              />
+            </div>
+          )}
         </div>
 
         <div>

@@ -95,7 +95,7 @@ function GroupDetails({ group }: { group: Group }) {
             <div className="flex flex-wrap items-center gap-2 mt-2">
               {group.category && (
                 <span className="text-xs text-zinc-500 bg-zinc-800 px-2 py-0.5 rounded-full border border-zinc-700">
-                  {group.category}
+                  {group.category === '__other__' && group.categoryOther ? group.categoryOther : group.category}
                 </span>
               )}
               {topic && (

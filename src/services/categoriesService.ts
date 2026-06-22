@@ -10,28 +10,61 @@ function labelToId(label: string): string {
 }
 
 function toCategory(id: string, data: any): Category {
-  return { id, label: data.label, createdAt: data.createdAt?.toDate() ?? new Date() }
+  return {
+    id,
+    label: data.label,
+    kind: data.kind ?? 'group',
+    status: data.status ?? 'approved',
+    createdAt: data.createdAt?.toDate() ?? new Date(),
+  }
 }
 
-export function subscribeCategories(callback: (cats: Category[]) => void): Unsubscribe {
+export function subscribeCategories(callback: (cats: Category[]) => void, kind: string = 'group'): Unsubscribe {
   const q = query(collection(db, 'categories'), orderBy('label'))
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => toCategory(d.id, d.data())))
+    const cats = snap.docs
+      .map(d => toCategory(d.id, d.data()))
+      .filter(c => (c.kind ?? 'group') === kind)
+    callback(cats)
   })
 }
 
-export async function addCategory(label: string): Promise<void> {
+export async function addCategory(label: string, kind: string = 'group'): Promise<void> {
   const trimmed = label.trim()
   if (!trimmed) return
-  const id = labelToId(trimmed)
+  const id = `${kind}__${labelToId(trimmed)}`
   await setDoc(doc(db, 'categories', id), {
     label: trimmed,
+    kind,
+    status: 'approved',
+    createdAt: serverTimestamp(),
+  })
+}
+
+export async function rejectCategorySuggestion(label: string, kind: string = 'group'): Promise<void> {
+  const trimmed = label.trim()
+  if (!trimmed) return
+  const id = `${kind}__${labelToId(trimmed)}`
+  await setDoc(doc(db, 'categories', id), {
+    label: trimmed,
+    kind,
+    status: 'rejected',
     createdAt: serverTimestamp(),
   })
 }
 
 export async function deleteCategory(id: string): Promise<void> {
   await deleteDoc(doc(db, 'categories', id))
+}
+
+export function isApproved(categories: Category[], label: string): boolean {
+  const trimmed = label.trim().toLowerCase()
+  return categories.some(c => (c.status ?? 'approved') === 'approved' && c.label.trim().toLowerCase() === trimmed)
+}
+
+export function isRejected(categories: Category[], label: string): boolean {
+  const trimmed = label.trim().toLowerCase()
+  return categories.some(c => c.status === 'rejected' && c.label.trim().toLowerCase() === trimmed)
 }
 
 const DEFAULT_CATEGORIES = [
