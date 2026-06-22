@@ -1075,7 +1075,7 @@ function EditEventModal({ event, onSave, onClose }: {
   onClose: () => void
 }) {
   const [title, setTitle] = useState(event.title)
-  const [externalUrl, setExternalUrl] = useState(event.externalUrl)
+  const [externalUrl, setExternalUrl] = useState(event.externalUrl ?? '')
   const [date, setDate] = useState(toDatetimeLocalStr(event.date))
   const [endDate, setEndDate] = useState(event.endDate ? toDatetimeLocalStr(event.endDate) : '')
   const [isVirtual, setIsVirtual] = useState(event.isVirtual)
@@ -1085,14 +1085,14 @@ function EditEventModal({ event, onSave, onClose }: {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (!title.trim() || !date || !externalUrl.trim()) return
+    if (!title.trim() || !date) return
     setSaving(true)
     try {
       const parsedDate = new Date(date)
       const parsedEndDate = endDate ? new Date(endDate) : undefined
       const update = {
         title: title.trim(),
-        externalUrl: externalUrl.trim(),
+        externalUrl: externalUrl.trim() || undefined,
         date: parsedDate,
         endDate: parsedEndDate,
         isVirtual,
@@ -1112,8 +1112,8 @@ function EditEventModal({ event, onSave, onClose }: {
         <FormField label="Title *">
           <input required value={title} onChange={e => setTitle(e.target.value)} placeholder="Event title" />
         </FormField>
-        <FormField label="Event URL *">
-          <input required type="url" value={externalUrl} onChange={e => setExternalUrl(e.target.value)} placeholder="https://..." />
+        <FormField label="Event URL">
+          <input type="url" value={externalUrl} onChange={e => setExternalUrl(e.target.value)} placeholder="https://..." />
         </FormField>
         <div className="grid grid-cols-2 gap-2">
           <FormField label="Start Date *">

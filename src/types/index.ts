@@ -29,6 +29,8 @@ export interface Topic {
   enabledComponents: ComponentType[]
   /** Admin-defined status taxonomy for this topic's map pins (e.g. Data Centers: Built/Under Construction/Proposed/Cancelled). Empty/unset = untyped pins. */
   mapPinTypes?: MapPinType[]
+  /** When true, new map pin submissions go live immediately instead of entering pending_review. */
+  mapPinsAutoApprove?: boolean
   status: 'active' | 'pending' | 'archived'
   createdBy: string
   createdAt: Date
@@ -129,7 +131,7 @@ export interface ImpetusEvent {
   location?: StructuredLocation
   coordinates?: { lat: number; lng: number }
   isVirtual: boolean
-  externalUrl: string
+  externalUrl?: string
   description?: string
   moderationStatus: ModerationStatus
   submittedBy: string
@@ -230,8 +232,9 @@ export interface CreateEventInput {
   date: Date
   endDate?: Date
   location?: StructuredLocation
+  coordinates?: { lat: number; lng: number }
   isVirtual: boolean
-  externalUrl: string
+  externalUrl?: string
   description?: string
 }
 

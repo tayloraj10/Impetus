@@ -38,6 +38,7 @@ export async function createMapPin(
   displayName: string,
   topicTitle: string,
   topicSlug: string,
+  autoApprove = false,
 ): Promise<void> {
   const ref = await addDoc(collection(db, 'map_pins'), {
     ...input,
@@ -45,7 +46,7 @@ export async function createMapPin(
     location: input.location ?? null,
     url: input.url ?? null,
     type: input.type ?? null,
-    moderationStatus: 'pending_review',
+    moderationStatus: autoApprove ? 'live' : 'pending_review',
     submittedBy: userId,
     submittedByDisplayName: displayName,
     likes: 0,

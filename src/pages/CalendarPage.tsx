@@ -254,12 +254,11 @@ export function CalendarPage() {
             ) : (
               displayEvents.map(e => {
                 const topic = topicMap.get(e.topicId)
+                const Wrapper = e.externalUrl ? 'a' : 'div'
                 return (
-                  <a
+                  <Wrapper
                     key={e.id}
-                    href={e.externalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    {...(e.externalUrl ? { href: e.externalUrl, target: '_blank', rel: 'noopener noreferrer' } : {})}
                     className="block bg-zinc-900 border border-zinc-800 rounded-lg p-3 hover:border-zinc-700 hover:bg-zinc-800/50 transition-all group"
                   >
                     <div className="font-medium text-zinc-100 text-sm group-hover:text-emerald-400 transition-colors leading-snug">
@@ -284,7 +283,7 @@ export function CalendarPage() {
                     {e.isVirtual && !e.location && (
                       <div className="text-xs text-zinc-600 mt-1">Virtual</div>
                     )}
-                  </a>
+                  </Wrapper>
                 )
               })
             )}
@@ -300,20 +299,21 @@ export function CalendarPage() {
           </p>
           {eventsForDay(selectedDay).length === 0 ? (
             <p className="text-zinc-600 text-sm text-center py-4">No events this day</p>
-          ) : eventsForDay(selectedDay).map(e => (
-            <a
-              key={e.id}
-              href={e.externalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block bg-zinc-900 border border-zinc-800 rounded-lg p-3 hover:border-zinc-700 transition-colors"
-            >
-              <div className="font-medium text-zinc-100 text-sm">{e.title}</div>
-              <div className="text-xs text-zinc-500 mt-1">
-                {topicMap.get(e.topicId)?.title} &middot; {e.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </div>
-            </a>
-          ))}
+          ) : eventsForDay(selectedDay).map(e => {
+            const Wrapper = e.externalUrl ? 'a' : 'div'
+            return (
+              <Wrapper
+                key={e.id}
+                {...(e.externalUrl ? { href: e.externalUrl, target: '_blank', rel: 'noopener noreferrer' } : {})}
+                className="block bg-zinc-900 border border-zinc-800 rounded-lg p-3 hover:border-zinc-700 transition-colors"
+              >
+                <div className="font-medium text-zinc-100 text-sm">{e.title}</div>
+                <div className="text-xs text-zinc-500 mt-1">
+                  {topicMap.get(e.topicId)?.title} &middot; {e.date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                </div>
+              </Wrapper>
+            )
+          })}
         </div>
       )}
     </div>

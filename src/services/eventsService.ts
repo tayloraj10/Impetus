@@ -7,7 +7,6 @@ import { db } from '../config/firebase'
 import type { ImpetusEvent, CreateEventInput } from '../types'
 import { createFeedItem, deleteFeedItemByRefId } from './feedService'
 import { incrementTopicCount, decrementTopicCount } from './topicsService'
-import { geocodeAddress, isGeocodeable } from './geocodeService'
 
 function toEvent(id: string, data: any): ImpetusEvent {
   return {
@@ -26,7 +25,7 @@ function toEvent(id: string, data: any): ImpetusEvent {
 export function subscribeAllEventsGlobal(callback: (events: ImpetusEvent[]) => void): Unsubscribe {
   const q = query(
     collection(db, 'events'),
-    where('moderationStatus', '==', 'live'),
+    where('moderationStatus', 'in', ['live', 'pending_review']),
   )
   return onSnapshot(q, (snap) => {
     const events = snap.docs.map(d => toEvent(d.id, d.data()))
@@ -39,7 +38,7 @@ export function subscribeEvents(topicId: string, callback: (events: ImpetusEvent
   const q = query(
     collection(db, 'events'),
     where('topicId', '==', topicId),
-    where('moderationStatus', '==', 'live'),
+    where('moderationStatus', 'in', ['live', 'pending_review']),
     orderBy('date', 'asc'),
   )
   return onSnapshot(q, (snap) => {
@@ -54,15 +53,11 @@ export async function createEvent(
   topicTitle: string,
   topicSlug: string,
 ): Promise<void> {
-  const canGeocode = !input.isVirtual && input.location && isGeocodeable(input.location)
-  const coordinates = canGeocode ? await geocodeAddress(input.location!) : null
-
   const cleanInput = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined))
   const ref = await addDoc(collection(db, 'events'), {
     ...cleanInput,
     date: Timestamp.fromDate(input.date),
     endDate: input.endDate ? Timestamp.fromDate(input.endDate) : null,
-    ...(coordinates ? { coordinates } : {}),
     moderationStatus: 'pending_review',
     submittedBy: userId,
     submittedByDisplayName: displayName,
@@ -81,7 +76,7 @@ export async function createEvent(
       topicSlug,
       title: input.title,
       ...(input.description ? { description: input.description } : {}),
-      url: input.externalUrl,
+      ...(input.externalUrl ? { url: input.externalUrl } : {}),
       likes: 0,
       submittedBy: userId,
       submittedByDisplayName: displayName,

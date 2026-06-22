@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import type { ImpetusEvent, CreateEventInput, StructuredLocation, Topic } from '../../types'
-import { formatLocation } from '../../services/geocodeService'
+import { geocodeAddress, isGeocodeable, formatLocation } from '../../services/geocodeService'
 import {
   subscribeEvents, createEvent,
   interestedEvent, uninterestedEvent,
@@ -115,6 +115,11 @@ function EventCard({ event, past = false, role }: { event: ImpetusEvent; past?: 
           <div className="flex items-center gap-2 mb-1">
             {event.isVirtual && <Badge variant="blue" size="sm">Virtual</Badge>}
             {event.location && <Badge variant="default" size="sm">{formatLocation(event.location)}</Badge>}
+            {event.moderationStatus === 'pending_review' && (
+              <Tooltip text="This event is visible but awaiting moderator review">
+                <span className="text-xs text-amber-500/80 font-medium">Under Review</span>
+              </Tooltip>
+            )}
             {canModerate && (
               <div className="ml-auto">
                 <ModerateButtons
@@ -124,15 +129,19 @@ function EventCard({ event, past = false, role }: { event: ImpetusEvent; past?: 
               </div>
             )}
           </div>
-          <a
-            href={event.externalUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-zinc-100 font-medium text-sm hover:text-emerald-400 transition-colors"
-            onClick={e => e.stopPropagation()}
-          >
-            {event.title} ↗
-          </a>
+          {event.externalUrl ? (
+            <a
+              href={event.externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-zinc-100 font-medium text-sm hover:text-emerald-400 transition-colors"
+              onClick={e => e.stopPropagation()}
+            >
+              {event.title} ↗
+            </a>
+          ) : (
+            <span className="text-zinc-100 font-medium text-sm">{event.title}</span>
+          )}
           {event.description && (
             <p className="text-zinc-400 text-sm mt-1 leading-relaxed line-clamp-2">{event.description}</p>
           )}
@@ -197,32 +206,71 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   )
 }
 
-const EMPTY_LOCATION: StructuredLocation = { city: '', state: '', zipCode: '', country: '' }
-
 function AddEventModal({ open, onClose, topic }: { open: boolean; onClose: () => void; topic: Topic }) {
   const { user } = useAuth()
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
-  const [location, setLocation] = useState<StructuredLocation>(EMPTY_LOCATION)
+  const [endDate, setEndDate] = useState('')
+  const [location, setLocation] = useState<StructuredLocation>({})
   const [isVirtual, setIsVirtual] = useState(false)
   const [url, setUrl] = useState('')
   const [description, setDescription] = useState('')
+  const [manualLat, setManualLat] = useState('')
+  const [manualLng, setManualLng] = useState('')
+  const [showManual, setShowManual] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+  const [geocodeError, setGeocodeError] = useState(false)
+
+  function reset() {
+    setTitle(''); setDate(''); setEndDate(''); setLocation({}); setIsVirtual(false); setUrl(''); setDescription('')
+    setManualLat(''); setManualLng(''); setShowManual(false)
+    setGeocodeError(false); setDone(false)
+  }
+
+  function handleClose() {
+    onClose()
+    reset()
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!user || !date) return
     setSubmitting(true)
+    setGeocodeError(false)
     try {
-      const hasLocation = !isVirtual && (location.city || location.state || location.zipCode || location.country)
+      let coordinates: { lat: number; lng: number } | undefined
+
+      if (!isVirtual) {
+        if (showManual) {
+          const lat = parseFloat(manualLat)
+          const lng = parseFloat(manualLng)
+          if (isNaN(lat) || isNaN(lng)) return
+          coordinates = { lat, lng }
+        } else {
+          if (!isGeocodeable(location)) {
+            setGeocodeError(true)
+            return
+          }
+          const geocoded = await geocodeAddress(location)
+          if (!geocoded) {
+            setGeocodeError(true)
+            setShowManual(true)
+            return
+          }
+          coordinates = geocoded
+        }
+      }
+
       const input: CreateEventInput = {
         topicId: topic.id,
         title,
         date: new Date(date),
-        location: hasLocation ? location : undefined,
+        endDate: endDate ? new Date(endDate) : undefined,
+        location: !isVirtual && Object.keys(location).length ? location : undefined,
+        coordinates,
         isVirtual,
-        externalUrl: url,
+        externalUrl: url || undefined,
         description: description || undefined,
       }
       await createEvent(input, user.uid, user.displayName ?? 'Anonymous', topic.title, topic.slug)
@@ -236,18 +284,18 @@ function AddEventModal({ open, onClose, topic }: { open: boolean; onClose: () =>
 
   if (done) {
     return (
-      <Modal open={open} onClose={() => { onClose(); setDone(false) }} title="Event Submitted">
+      <Modal open={open} onClose={handleClose} title="Event Submitted">
         <div className="text-center py-4">
           <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3"><span className="text-emerald-400 text-sm font-bold">✓</span></div>
           <p className="text-zinc-300 text-sm">Submitted for review.</p>
-          <Button className="mt-4" onClick={() => { onClose(); setDone(false) }}>Done</Button>
+          <Button className="mt-4" onClick={handleClose}>Done</Button>
         </div>
       </Modal>
     )
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Add an Event">
+    <Modal open={open} onClose={handleClose} title="Add an Event">
       <form onSubmit={handleSubmit} className="space-y-4">
         <label className="block">
           <span className="block text-xs text-zinc-400 mb-1">Event Name *</span>
@@ -257,26 +305,90 @@ function AddEventModal({ open, onClose, topic }: { open: boolean; onClose: () =>
           <span className="block text-xs text-zinc-400 mb-1">Date *</span>
           <input required type="date" value={date} onChange={e => setDate(e.target.value)} className={inputClass} />
         </label>
+        <label className="block">
+          <span className="block text-xs text-zinc-400 mb-1">End Date</span>
+          <input type="date" min={date || undefined} value={endDate} onChange={e => setEndDate(e.target.value)} className={inputClass} />
+        </label>
         <label className="flex items-center gap-2 cursor-pointer">
-          <input type="checkbox" checked={isVirtual} onChange={e => setIsVirtual(e.target.checked)} className="accent-emerald-500" />
+          <input type="checkbox" checked={isVirtual} onChange={e => { setIsVirtual(e.target.checked); setGeocodeError(false) }} className="accent-emerald-500" />
           <span className="text-sm text-zinc-300">Virtual event</span>
         </label>
         {!isVirtual && (
-          <div>
-            <span className="block text-xs text-zinc-400 mb-2">Location</span>
-            <LocationInput value={location} onChange={setLocation} />
-          </div>
+          <>
+            <div>
+              <span className="block text-xs text-zinc-400 mb-1">Location *</span>
+              <LocationInput
+                value={location}
+                onChange={loc => { setLocation(loc); setGeocodeError(false) }}
+                showStreet
+                required
+              />
+            </div>
+            {geocodeError && (
+              <p className="text-amber-400 text-xs -mt-2">
+                Couldn't locate that — enter coordinates manually below.
+              </p>
+            )}
+
+            {showManual && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="block">
+                    <span className="block text-xs text-zinc-400 mb-1">Latitude *</span>
+                    <input
+                      required
+                      type="number"
+                      step="any"
+                      value={manualLat}
+                      onChange={e => setManualLat(e.target.value)}
+                      placeholder="e.g. 40.7128"
+                      className={inputClass}
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="block text-xs text-zinc-400 mb-1">Longitude *</span>
+                    <input
+                      required
+                      type="number"
+                      step="any"
+                      value={manualLng}
+                      onChange={e => setManualLng(e.target.value)}
+                      placeholder="e.g. -74.0060"
+                      className={inputClass}
+                    />
+                  </label>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { setShowManual(false); setGeocodeError(false) }}
+                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  ← Use location fields instead
+                </button>
+              </>
+            )}
+
+            {!showManual && (
+              <button
+                type="button"
+                onClick={() => setShowManual(true)}
+                className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors block -mt-2"
+              >
+                Enter coordinates manually instead
+              </button>
+            )}
+          </>
         )}
         <label className="block">
-          <span className="block text-xs text-zinc-400 mb-1">Event URL *</span>
-          <input required type="url" value={url} onChange={e => setUrl(e.target.value)} className={inputClass} placeholder="https://..." />
+          <span className="block text-xs text-zinc-400 mb-1">Event URL</span>
+          <input type="url" value={url} onChange={e => setUrl(e.target.value)} className={inputClass} placeholder="https://..." />
         </label>
         <label className="block">
           <span className="block text-xs text-zinc-400 mb-1">Description</span>
           <textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} className={`${inputClass} resize-none`} placeholder="Brief description..." />
         </label>
         <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="button" variant="secondary" onClick={handleClose}>Cancel</Button>
           <Button type="submit" disabled={submitting}>{submitting ? 'Submitting...' : 'Submit Event'}</Button>
         </div>
       </form>

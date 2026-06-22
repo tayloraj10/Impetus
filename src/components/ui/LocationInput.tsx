@@ -19,8 +19,14 @@ export function LocationInput({ value, onChange, showStreet = false, required = 
   const [autofilling, setAutofilling] = useState(false)
   const lastQuery = useRef('')
 
+  // Firestore rejects explicit `undefined` field values, so cleared/unset fields must be
+  // omitted from the object entirely rather than assigned `undefined`.
+  function prune(loc: StructuredLocation): StructuredLocation {
+    return Object.fromEntries(Object.entries(loc).filter(([, v]) => v !== undefined && v !== '')) as StructuredLocation
+  }
+
   function set(field: keyof StructuredLocation, val: string) {
-    onChange({ ...value, [field]: val || undefined })
+    onChange(prune({ ...value, [field]: val }))
   }
 
   // Applied on blur (not while typing) so the abbreviation heuristic in properCase doesn't
@@ -42,13 +48,13 @@ export function LocationInput({ value, onChange, showStreet = false, required = 
       const result = await lookupLocation(value)
       setAutofilling(false)
       if (!result) return
-      onChange({
+      onChange(prune({
         street: value.street ?? result.street,
         city: value.city ?? result.city,
         state: value.state ?? result.state,
         zipCode: value.zipCode ?? result.zipCode,
         country: value.country ?? result.country,
-      })
+      }))
     }, 600)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -211,14 +211,16 @@ export function MapPage() {
                   {event.location && (
                     <div className="text-xs text-zinc-600 mb-1.5">{formatLocation(event.location)}</div>
                   )}
-                  <a
-                    href={event.externalUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
-                  >
-                    Event details →
-                  </a>
+                  {event.externalUrl && (
+                    <a
+                      href={event.externalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-amber-400 hover:text-amber-300 transition-colors"
+                    >
+                      Event details →
+                    </a>
+                  )}
                 </div>
               </Popup>
             </Marker>

@@ -1,7 +1,10 @@
 import 'leaflet/dist/leaflet.css'
+import 'leaflet.markercluster/dist/MarkerCluster.css'
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import React, { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import MarkerClusterGroup from 'react-leaflet-cluster'
 import type { MapPin, MapPinType, CreateMapPinInput, StructuredLocation, Topic } from '../../types'
 import {
   subscribeMapPins, createMapPin,
@@ -43,6 +46,22 @@ function pinIcon(color: string, focused: boolean): L.DivIcon {
         popupAnchor: [0, -12],
       })
   iconCache.set(key, icon)
+  return icon
+}
+
+const clusterIconCache = new Map<number, L.DivIcon>()
+
+function clusterIcon(count: number): L.DivIcon {
+  const cached = clusterIconCache.get(count)
+  if (cached) return cached
+  const size = count >= 100 ? 44 : count >= 10 ? 38 : 32
+  const icon = L.divIcon({
+    html: `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;background:rgba(16,185,129,0.18);border:2px solid #10b981;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.5);color:#d1fae5;font-weight:600;font-size:${size > 38 ? 14 : 12}px;font-family:inherit">${count}</div>`,
+    className: '',
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  })
+  clusterIconCache.set(count, icon)
   return icon
 }
 
@@ -128,45 +147,54 @@ export function MapsComponent({ topic }: { topic: Topic }) {
               />
               <FitBounds pins={pins} />
               <FlyToPin target={flyTarget} />
-              {pins.map(pin => {
-                const pinType = typeFor(pin)
-                return (
-                <Marker
-                  key={pin.id}
-                  position={[pin.coordinates.lat, pin.coordinates.lng]}
-                  icon={pinIcon(pinType?.color ?? DEFAULT_PIN_COLOR, focusedId === pin.id)}
-                  eventHandlers={{ click: () => setFocusedId(pin.id) }}
-                >
-                  <Popup className="impetus-map-popup">
-                    <div className="min-w-[160px] max-w-[220px]">
-                      <p className="font-semibold text-sm leading-snug mb-1">{pin.name}</p>
-                      {pinType && (
-                        <p className="text-xs font-medium mb-1.5" style={{ color: pinType.color }}>{pinType.label}</p>
-                      )}
-                      {pin.description && (
-                        <p className="text-xs leading-relaxed mb-1.5 opacity-70">{pin.description}</p>
-                      )}
-                      {pin.location && (
-                        <p className="text-xs opacity-50 mb-1">{formatLocation(pin.location)}</p>
-                      )}
-                      {pin.url && (
-                        <a
-                          href={pin.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-emerald-400 hover:text-emerald-300 block mt-1"
-                        >
-                          Source ↗
-                        </a>
-                      )}
-                      {pin.moderationStatus === 'pending_review' && (
-                        <span className="text-xs text-amber-500/80 block mt-1">Under Review</span>
-                      )}
-                    </div>
-                  </Popup>
-                </Marker>
-                )
-              })}
+              <MarkerClusterGroup
+                chunkedLoading
+                maxClusterRadius={50}
+                spiderfyOnMaxZoom
+                showCoverageOnHover={false}
+                iconCreateFunction={(cluster: { getChildCount: () => number }) => clusterIcon(cluster.getChildCount())}
+              >
+                {pins.map(pin => {
+                  const pinType = typeFor(pin)
+                  return (
+                  <Marker
+                    key={pin.id}
+                    position={[pin.coordinates.lat, pin.coordinates.lng]}
+                    icon={pinIcon(pinType?.color ?? DEFAULT_PIN_COLOR, focusedId === pin.id)}
+                    eventHandlers={{ click: () => setFocusedId(pin.id) }}
+                  >
+                    <Popup className="impetus-map-popup">
+                      <div className="min-w-[160px] max-w-[220px]">
+                        <p className="font-semibold text-sm leading-snug mb-1">{pin.name}</p>
+                        {pinType && (
+                          <p className="text-xs font-medium mb-1.5" style={{ color: pinType.color }}>{pinType.label}</p>
+                        )}
+                        {pin.description && (
+                          <p className="text-xs leading-relaxed mb-1.5 opacity-70">{pin.description}</p>
+                        )}
+                        {pin.location && (
+                          <p className="text-xs opacity-50 mb-1">{formatLocation(pin.location)}</p>
+                        )}
+                        {pin.url && (
+                          <a
+                            href={pin.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-emerald-400 hover:text-emerald-300 block mt-1"
+                          >
+                            Source ↗
+                          </a>
+                        )}
+                        {pin.moderationStatus === 'pending_review' && (
+                          <span className="text-xs text-amber-500/80 block mt-1">Under Review</span>
+                        )}
+                      </div>
+                    </Popup>
+                  </Marker>
+                  )
+                })}
+              </MarkerClusterGroup>
+
             </MapContainer>
           </div>
 
@@ -368,7 +396,7 @@ function AddPinModal({ open, onClose, topic }: { open: boolean; onClose: () => v
         ...(url ? { url } : {}),
       }
 
-      await createMapPin(input, user.uid, user.displayName ?? 'Anonymous', topic.title, topic.slug)
+      await createMapPin(input, user.uid, user.displayName ?? 'Anonymous', topic.title, topic.slug, topic.mapPinsAutoApprove)
       setDone(true)
     } finally {
       setSubmitting(false)
@@ -382,7 +410,11 @@ function AddPinModal({ open, onClose, topic }: { open: boolean; onClose: () => v
           <div className="w-8 h-8 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3">
             <span className="text-emerald-400 text-sm font-bold">✓</span>
           </div>
-          <p className="text-zinc-300 text-sm">Your pin is now live. A moderator will review it shortly.</p>
+          <p className="text-zinc-300 text-sm">
+            {topic.mapPinsAutoApprove
+              ? 'Your pin is now live.'
+              : 'Your pin is now live. A moderator will review it shortly.'}
+          </p>
           <Button className="mt-4" onClick={handleClose}>Done</Button>
         </div>
       </Modal>

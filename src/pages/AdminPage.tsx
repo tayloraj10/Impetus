@@ -394,6 +394,30 @@ function ComponentToggles({
   )
 }
 
+function MapAutoApproveToggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div>
+      <span className="block text-xs text-zinc-400 mb-2">Map Pin Moderation</span>
+      <button
+        type="button"
+        onClick={() => onChange(!value)}
+        className={`text-xs px-3 py-1.5 rounded-lg border font-medium transition-colors cursor-pointer ${
+          value
+            ? 'bg-emerald-500/15 border-emerald-600 text-emerald-400'
+            : 'bg-zinc-800 border-zinc-700 text-zinc-500 hover:border-zinc-500 hover:text-zinc-300'
+        }`}
+      >
+        {value ? 'Auto-approve: on' : 'Auto-approve: off'}
+      </button>
+      <p className="text-xs text-zinc-500 mt-1.5">
+        {value
+          ? "New pin submissions go live immediately and skip the moderation queue entirely."
+          : 'New pin submissions go live immediately but are flagged "Under Review" for a moderator to check afterward.'}
+      </p>
+    </div>
+  )
+}
+
 const PIN_TYPE_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#ef4444', '#a855f7', '#06b6d4', '#84cc16', '#ec4899']
 
 function slugifyPinType(label: string): string {
@@ -480,6 +504,7 @@ function CreateTopicModal({ open, onClose, topics }: { open: boolean; onClose: (
   const [tags, setTags] = useState('')
   const [components, setComponents] = useState<ComponentType[]>(['groups', 'resources', 'events', 'challenges'])
   const [mapPinTypes, setMapPinTypes] = useState<MapPinType[]>([])
+  const [mapPinsAutoApprove, setMapPinsAutoApprove] = useState(false)
   const [parentTopicId, setParentTopicId] = useState('')
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -524,11 +549,12 @@ function CreateTopicModal({ open, onClose, topics }: { open: boolean; onClose: (
         ...(parentTopic ? { parentTopicId: parentTopic.id, parentTopicSlug: parentTopic.slug, parentTopicTitle: parentTopic.title } : {}),
         enabledComponents: components,
         ...(mapPinTypes.length > 0 ? { mapPinTypes } : {}),
+        ...(mapPinsAutoApprove ? { mapPinsAutoApprove: true } : {}),
         status: 'active',
         createdBy: user.uid,
       })
       onClose()
-      setTitle(''); setSlug(''); setDescription(''); setTags(''); setComponents(['groups', 'resources', 'events', 'challenges']); setMapPinTypes([]); setParentTopicId(''); clearImage()
+      setTitle(''); setSlug(''); setDescription(''); setTags(''); setComponents(['groups', 'resources', 'events', 'challenges']); setMapPinTypes([]); setMapPinsAutoApprove(false); setParentTopicId(''); clearImage()
     } finally {
       setSubmitting(false)
     }
@@ -566,7 +592,10 @@ function CreateTopicModal({ open, onClose, topics }: { open: boolean; onClose: (
         )}
         <ComponentToggles value={components} onChange={setComponents} />
         {components.includes('maps') && (
-          <MapPinTypesEditor value={mapPinTypes} onChange={setMapPinTypes} />
+          <>
+            <MapPinTypesEditor value={mapPinTypes} onChange={setMapPinTypes} />
+            <MapAutoApproveToggle value={mapPinsAutoApprove} onChange={setMapPinsAutoApprove} />
+          </>
         )}
         <div>
           <span className="block text-xs text-zinc-400 mb-1">Cover Image</span>
@@ -609,6 +638,7 @@ function EditTopicModal({ topic, onClose, topics }: { topic: Topic; onClose: () 
   const [tags, setTags] = useState(topic.tags.join(', '))
   const [components, setComponents] = useState<ComponentType[]>(topic.enabledComponents)
   const [mapPinTypes, setMapPinTypes] = useState<MapPinType[]>(topic.mapPinTypes ?? [])
+  const [mapPinsAutoApprove, setMapPinsAutoApprove] = useState(topic.mapPinsAutoApprove ?? false)
   const [status, setStatus] = useState<Topic['status']>(topic.status)
   const [parentTopicId, setParentTopicId] = useState(topic.parentTopicId ?? '')
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -616,6 +646,19 @@ function EditTopicModal({ topic, onClose, topics }: { topic: Topic; onClose: () 
   const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const parentTopics = topics.filter(t => t.status === 'active' && !t.parentTopicId && t.id !== topic.id)
+
+  const isDirty =
+    title !== topic.title ||
+    slug !== topic.slug ||
+    description !== topic.description ||
+    tags !== topic.tags.join(', ') ||
+    JSON.stringify(components) !== JSON.stringify(topic.enabledComponents) ||
+    JSON.stringify(mapPinTypes) !== JSON.stringify(topic.mapPinTypes ?? []) ||
+    mapPinsAutoApprove !== (topic.mapPinsAutoApprove ?? false) ||
+    status !== topic.status ||
+    parentTopicId !== (topic.parentTopicId ?? '') ||
+    imageFile !== null ||
+    imagePreview !== (topic.imageUrl ?? null)
 
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -649,6 +692,7 @@ function EditTopicModal({ topic, onClose, topics }: { topic: Topic; onClose: () 
         tags: tags.split(',').map(t => t.trim()).filter(Boolean),
         enabledComponents: components,
         ...(mapPinTypes.length > 0 ? { mapPinTypes } : { mapPinTypes: deleteField() }),
+        mapPinsAutoApprove,
         status,
         ...(imageUrl !== undefined ? { imageUrl } : {}),
         ...(parentTopic
@@ -662,7 +706,7 @@ function EditTopicModal({ topic, onClose, topics }: { topic: Topic; onClose: () 
   }
 
   return (
-    <Modal open={true} onClose={onClose} title={`Edit: ${topic.title}`}>
+    <Modal open={true} onClose={onClose} title={`Edit: ${topic.title}`} dirty={isDirty}>
       <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
         <label className="block">
           <span className="block text-xs text-zinc-400 mb-1">Title *</span>
@@ -696,7 +740,10 @@ function EditTopicModal({ topic, onClose, topics }: { topic: Topic; onClose: () 
         </label>
         <ComponentToggles value={components} onChange={setComponents} />
         {components.includes('maps') && (
-          <MapPinTypesEditor value={mapPinTypes} onChange={setMapPinTypes} />
+          <>
+            <MapPinTypesEditor value={mapPinTypes} onChange={setMapPinTypes} />
+            <MapAutoApproveToggle value={mapPinsAutoApprove} onChange={setMapPinsAutoApprove} />
+          </>
         )}
         <div>
           <span className="block text-xs text-zinc-400 mb-2">Status</span>
@@ -751,7 +798,8 @@ function EditTopicModal({ topic, onClose, topics }: { topic: Topic; onClose: () 
           )}
           <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageChange} className="hidden" />
         </div>
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex items-center justify-end gap-2 pt-2">
+          {isDirty && <span className="text-xs text-amber-400 mr-auto">Unsaved changes</span>}
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="submit" disabled={submitting}>{submitting ? 'Saving...' : 'Save Changes'}</Button>
         </div>
@@ -1303,13 +1351,15 @@ function EventDetailModal({ event: e, topicName, open, onClose }: { event: Impet
             </div>
           )}
         </div>
-        <div>
-          <p className="text-zinc-500 text-xs mb-1">Link</p>
-          <a href={e.externalUrl} target="_blank" rel="noopener noreferrer"
-            className="text-emerald-400 hover:text-emerald-300 text-sm underline break-all">
-            {e.externalUrl}
-          </a>
-        </div>
+        {e.externalUrl && (
+          <div>
+            <p className="text-zinc-500 text-xs mb-1">Link</p>
+            <a href={e.externalUrl} target="_blank" rel="noopener noreferrer"
+              className="text-emerald-400 hover:text-emerald-300 text-sm underline break-all">
+              {e.externalUrl}
+            </a>
+          </div>
+        )}
         {e.description && (
           <div>
             <p className="text-zinc-500 text-xs mb-1">Description</p>
