@@ -96,7 +96,7 @@ function ShieldCheck({ filled }: { filled: boolean }) {
 }
 
 function GroupCard({ group, topicTitle, topicSlug }: { group: Group; topicTitle?: string; topicSlug?: string }) {
-  const hasLinks = Object.values(group.links ?? {}).some(Boolean)
+  const hasLinks = Object.values(group.socialLinks ?? {}).some(Boolean)
   const { liked, toggle, canLike } = useLiked(group.id, 'verified')
   const { flagged, flag, unflag, canFlag } = useFlag(group.id)
   const navigate = useNavigate()
@@ -159,11 +159,11 @@ function GroupCard({ group, topicTitle, topicSlug }: { group: Group; topicTitle?
 
       {hasLinks && (
         <div className="flex flex-wrap gap-2 mt-auto pt-2" onClick={e => e.preventDefault()}>
-          {group.links.website && <SocialLink href={group.links.website} label="Website" />}
-          {group.links.instagram && <SocialLink href={group.links.instagram} label="Instagram" />}
-          {group.links.facebook && <SocialLink href={group.links.facebook} label="Facebook" />}
-          {group.links.twitter && <SocialLink href={group.links.twitter} label="Twitter" />}
-          {group.links.youtube && <SocialLink href={group.links.youtube} label="YouTube" />}
+          {group.socialLinks.website && <SocialLink href={group.socialLinks.website} label="Website" />}
+          {group.socialLinks.instagram && <SocialLink href={group.socialLinks.instagram} label="Instagram" />}
+          {group.socialLinks.facebook && <SocialLink href={group.socialLinks.facebook} label="Facebook" />}
+          {group.socialLinks.twitter && <SocialLink href={group.socialLinks.twitter} label="Twitter" />}
+          {group.socialLinks.youtube && <SocialLink href={group.socialLinks.youtube} label="YouTube" />}
         </div>
       )}
     </div>

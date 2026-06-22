@@ -93,7 +93,7 @@ function ShieldCheck({ filled }: { filled: boolean }) {
 }
 
 function GroupCard({ group, role }: { group: Group; role: string | null }) {
-  const hasLinks = Object.values(group.links ?? {}).some(Boolean)
+  const hasLinks = Object.values(group.socialLinks ?? {}).some(Boolean)
   const { liked, toggle, canLike } = useLiked(group.id, 'verified')
   const { flagged, flag, unflag, canFlag } = useFlag(group.id)
   const canModerate = role === 'admin' || role === 'moderator'
@@ -162,12 +162,12 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
 
       {hasLinks && (
         <div className="flex flex-wrap gap-2" onClick={e => e.preventDefault()}>
-          {group.links.website && <SocialLink href={group.links.website} label="Website" />}
-          {group.links.instagram && <SocialLink href={socialUrl('instagram', group.links.instagram)} label="Instagram" />}
-          {group.links.tiktok && <SocialLink href={socialUrl('tiktok', group.links.tiktok)} label="TikTok" />}
-          {group.links.youtube && <SocialLink href={socialUrl('youtube', group.links.youtube)} label="YouTube" />}
-          {group.links.facebook && <SocialLink href={socialUrl('facebook', group.links.facebook)} label="Facebook" />}
-          {group.links.twitter && <SocialLink href={socialUrl('twitter', group.links.twitter)} label="Twitter" />}
+          {group.socialLinks.website && <SocialLink href={group.socialLinks.website} label="Website" />}
+          {group.socialLinks.instagram && <SocialLink href={socialUrl('instagram', group.socialLinks.instagram)} label="Instagram" />}
+          {group.socialLinks.tiktok && <SocialLink href={socialUrl('tiktok', group.socialLinks.tiktok)} label="TikTok" />}
+          {group.socialLinks.youtube && <SocialLink href={socialUrl('youtube', group.socialLinks.youtube)} label="YouTube" />}
+          {group.socialLinks.facebook && <SocialLink href={socialUrl('facebook', group.socialLinks.facebook)} label="Facebook" />}
+          {group.socialLinks.twitter && <SocialLink href={socialUrl('twitter', group.socialLinks.twitter)} label="Twitter" />}
         </div>
       )}
     </div>
@@ -219,7 +219,7 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
     description: '',
     category: '',
     location: { city: '', state: '', zipCode: '', country: '' },
-    links: { website: '', instagram: '', tiktok: '', youtube: '', facebook: '', twitter: '' },
+    socialLinks: { website: '', instagram: '', tiktok: '', youtube: '', facebook: '', twitter: '' },
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
@@ -231,7 +231,7 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
     setForm(f => ({ ...f, [field]: value }))
   }
   function setLink(field: string, value: string) {
-    setForm(f => ({ ...f, links: { ...f.links, [field]: value } }))
+    setForm(f => ({ ...f, socialLinks: { ...f.socialLinks, [field]: value } }))
   }
   function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -324,22 +324,22 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
 
         <div className="grid grid-cols-2 gap-2">
           <Field label="Website">
-            <input type="url" value={form.links?.website ?? ''} onChange={e => setLink('website', e.target.value)} placeholder="https://..." />
+            <input type="url" value={form.socialLinks?.website ?? ''} onChange={e => setLink('website', e.target.value)} placeholder="https://..." />
           </Field>
           <Field label="Instagram">
-            <input value={form.links?.instagram ?? ''} onChange={e => setLink('instagram', e.target.value.replace(/^@/, ''))} placeholder="username" />
+            <input value={form.socialLinks?.instagram ?? ''} onChange={e => setLink('instagram', e.target.value.replace(/^@/, ''))} placeholder="username" />
           </Field>
           <Field label="TikTok">
-            <input value={form.links?.tiktok ?? ''} onChange={e => setLink('tiktok', e.target.value.replace(/^@/, ''))} placeholder="username" />
+            <input value={form.socialLinks?.tiktok ?? ''} onChange={e => setLink('tiktok', e.target.value.replace(/^@/, ''))} placeholder="username" />
           </Field>
           <Field label="YouTube">
-            <input value={form.links?.youtube ?? ''} onChange={e => setLink('youtube', e.target.value.replace(/^@/, ''))} placeholder="username" />
+            <input value={form.socialLinks?.youtube ?? ''} onChange={e => setLink('youtube', e.target.value.replace(/^@/, ''))} placeholder="username" />
           </Field>
           <Field label="Facebook">
-            <input value={form.links?.facebook ?? ''} onChange={e => setLink('facebook', e.target.value.replace(/^@/, ''))} placeholder="username" />
+            <input value={form.socialLinks?.facebook ?? ''} onChange={e => setLink('facebook', e.target.value.replace(/^@/, ''))} placeholder="username" />
           </Field>
           <Field label="Twitter">
-            <input value={form.links?.twitter ?? ''} onChange={e => setLink('twitter', e.target.value.replace(/^@/, ''))} placeholder="username" />
+            <input value={form.socialLinks?.twitter ?? ''} onChange={e => setLink('twitter', e.target.value.replace(/^@/, ''))} placeholder="username" />
           </Field>
         </div>
 

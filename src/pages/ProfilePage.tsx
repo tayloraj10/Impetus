@@ -939,7 +939,7 @@ function EditGroupModal({ group, onSave, onClose }: {
   const [description, setDescription] = useState(group.description)
   const [category, setCategory] = useState(group.category ?? '')
   const [location, setLocation] = useState<StructuredLocation>(group.location ?? {})
-  const [links, setLinks] = useState({ ...group.links })
+  const [links, setLinks] = useState({ ...group.socialLinks })
   const [saving, setSaving] = useState(false)
 
   function setLink(field: string, value: string) {
@@ -951,7 +951,7 @@ function EditGroupModal({ group, onSave, onClose }: {
     if (!name.trim() || !description.trim()) return
     setSaving(true)
     try {
-      const update = { name: name.trim(), description: description.trim(), category: category || undefined, location, links }
+      const update = { name: name.trim(), description: description.trim(), category: category || undefined, location, socialLinks: links }
       await updateGroup(group.id, update)
       onSave({ ...group, ...update })
     } finally {

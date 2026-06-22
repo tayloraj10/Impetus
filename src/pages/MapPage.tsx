@@ -153,7 +153,7 @@ export function MapPage() {
           {showGroups && filteredGroups.map(group => (
             <Marker
               key={group.id}
-              position={[group.coordinates!.lat, group.coordinates!.lng]}
+              position={[group.coordinates!.latitude, group.coordinates!.longitude]}
               icon={groupIcon}
             >
               <Popup className="impetus-map-popup">
@@ -172,9 +172,9 @@ export function MapPage() {
                       {formatLocation(group.location)}
                     </div>
                   )}
-                  {group.links.website && (
+                  {group.socialLinks.website && (
                     <a
-                      href={group.links.website}
+                      href={group.socialLinks.website}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs text-emerald-400 hover:text-emerald-300 transition-colors"

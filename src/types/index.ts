@@ -1,3 +1,5 @@
+import type { CategorySlug } from './dogs'
+
 export type ComponentType = 'groups' | 'resources' | 'events' | 'challenges' | 'maps'
 
 export interface StructuredLocation {
@@ -58,8 +60,8 @@ export interface Group {
   category?: string
   imageUrl?: string
   location?: StructuredLocation
-  coordinates?: { lat: number; lng: number }
-  links: {
+  coordinates?: { latitude: number; longitude: number }
+  socialLinks: {
     website?: string
     instagram?: string
     tiktok?: string
@@ -67,6 +69,11 @@ export interface Group {
     facebook?: string
     twitter?: string
   }
+  /** Cause-area tags aligned with the DOGS DirectoryEntry taxonomy — distinct from `category` (org type). */
+  causeCategories: CategorySlug[]
+  featured: boolean
+  /** Other users associated with/managing this listing, beyond the original submitter. */
+  userIds: string[]
   moderationStatus: ModerationStatus
   submittedBy: string
   submittedByDisplayName?: string
@@ -184,7 +191,8 @@ export interface CreateGroupInput {
   category?: string
   imageUrl?: string
   location?: Group['location']
-  links?: Group['links']
+  socialLinks?: Group['socialLinks']
+  causeCategories?: CategorySlug[]
 }
 
 export interface Category {

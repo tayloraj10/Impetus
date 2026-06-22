@@ -873,7 +873,7 @@ function GroupDetailModal({ group: g, topicName, open, onClose }: { group: Group
   }
 
   const locationStr = g.location ? formatLocation(g.location) : ''
-  const socialLinks = Object.entries(g.links ?? {}).filter((entry): entry is [string, string] => Boolean(entry[1]))
+  const socialLinks = Object.entries(g.socialLinks ?? {}).filter((entry): entry is [string, string] => Boolean(entry[1]))
 
   return (
     <Modal open={open} onClose={onClose} title="Review Group" size="lg">

@@ -55,6 +55,10 @@ async function wipeTopic(topicId: string) {
   )
 }
 
+function withGroupDefaults(g: Record<string, any>) {
+  return { causeCategories: [], featured: false, userIds: g.submittedBy ? [g.submittedBy] : [], ...g }
+}
+
 // ─── TRASH CLEANUPS ──────────────────────────────────────────────────────────
 // lastActivityAt target: ~1.5h ago (second most recent in testing)
 
@@ -77,8 +81,8 @@ export async function seedTrashCleanups(userId: string, displayName: string): Pr
       category: 'Nonprofit',
       description: 'Community-led cleanup org covering Austin parks, trails, and neighborhoods. Running monthly events since 2018.',
       location: { city: 'Austin', state: 'TX', country: 'US' },
-      coordinates: { lat: 30.2672, lng: -97.7431 },
-      links: { website: 'https://keepaustinclean.org', instagram: 'https://instagram.com/keepaustinclean' },
+      coordinates: { latitude: 30.2672, longitude: -97.7431 },
+      socialLinks: { website: 'https://keepaustinclean.org', instagram: 'https://instagram.com/keepaustinclean' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 24, flags: 0, createdAt: ts(5), updatedAt: ts(5),
     },
@@ -87,8 +91,8 @@ export async function seedTrashCleanups(userId: string, displayName: string): Pr
       category: 'Government Agency',
       description: 'Partnered with NYC DSNY to fill sanitation gaps — deploying volunteer squads in underserved neighborhoods.',
       location: { city: 'New York', state: 'NY', country: 'US' },
-      coordinates: { lat: 40.7128, lng: -74.006 },
-      links: { website: 'https://nycservice.org', facebook: 'https://facebook.com/nycservice' },
+      coordinates: { latitude: 40.7128, longitude: -74.006 },
+      socialLinks: { website: 'https://nycservice.org', facebook: 'https://facebook.com/nycservice' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 18, flags: 0, createdAt: ts(4), updatedAt: ts(4),
     },
@@ -97,8 +101,8 @@ export async function seedTrashCleanups(userId: string, displayName: string): Pr
       category: 'Grassroots / Community',
       description: 'Weekly beach and park cleanups across the Bay. All gear provided, no experience needed.',
       location: { city: 'San Francisco', state: 'CA', country: 'US' },
-      coordinates: { lat: 37.7749, lng: -122.4194 },
-      links: { instagram: 'https://instagram.com/baycleanup', website: 'https://baycleanup.org' },
+      coordinates: { latitude: 37.7749, longitude: -122.4194 },
+      socialLinks: { instagram: 'https://instagram.com/baycleanup', website: 'https://baycleanup.org' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 31, flags: 0, createdAt: ts(0, 1, 30), updatedAt: ts(0, 1, 30),
     },
@@ -166,7 +170,7 @@ export async function seedTrashCleanups(userId: string, displayName: string): Pr
   }
 
   const [groupRefs, resourceRefs, eventRefs, challengeRef] = await Promise.all([
-    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), g))),
+    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), withGroupDefaults(g)))),
     Promise.all(resources.map(r => addDoc(collection(db, 'resources'), r))),
     Promise.all(events.map(e => addDoc(collection(db, 'events'), e))),
     addDoc(collection(db, 'challenges'), challenge),
@@ -226,8 +230,8 @@ export async function seedAmazonBoycott(
       category: 'Grassroots / Community',
       description: 'Independent labor union organizing drive across Amazon warehouses and delivery network. First successful Amazon union in the US.',
       location: { city: 'Staten Island', state: 'NY', country: 'US' },
-      coordinates: { lat: 40.5795, lng: -74.1502 },
-      links: { website: 'https://amazonlaborunion.org', twitter: 'https://twitter.com/AmazonLabor' },
+      coordinates: { latitude: 40.5795, longitude: -74.1502 },
+      socialLinks: { website: 'https://amazonlaborunion.org', twitter: 'https://twitter.com/AmazonLabor' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 87, flags: 0, createdAt: ts(0, 0, 20), updatedAt: ts(0, 0, 20),
     },
@@ -236,7 +240,7 @@ export async function seedAmazonBoycott(
       category: 'Grassroots / Community',
       description: 'Consumer coalition coordinating Prime Day boycotts and building awareness around ethical alternatives to Amazon shopping.',
       location: {},
-      links: { instagram: 'https://instagram.com/shutdownprime' },
+      socialLinks: { instagram: 'https://instagram.com/shutdownprime' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 43, flags: 0, createdAt: ts(0, 1), updatedAt: ts(0, 1),
     },
@@ -292,7 +296,7 @@ export async function seedAmazonBoycott(
   }
 
   const [groupRefs, resourceRefs, eventRefs, challengeRef] = await Promise.all([
-    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), g))),
+    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), withGroupDefaults(g)))),
     Promise.all(resources.map(r => addDoc(collection(db, 'resources'), r))),
     Promise.all(events.map(e => addDoc(collection(db, 'events'), e))),
     addDoc(collection(db, 'challenges'), challenge),
@@ -346,7 +350,7 @@ export async function seedDataCenters(userId: string, displayName: string): Prom
       category: 'Nonprofit',
       description: 'Advocacy group pushing for 100% renewable energy standards and water use caps across the tech industry.',
       location: {},
-      links: { website: 'https://cleancomputing.org', twitter: 'https://twitter.com/cleancomputing' },
+      socialLinks: { website: 'https://cleancomputing.org', twitter: 'https://twitter.com/cleancomputing' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 61, flags: 0, createdAt: ts(0, 3), updatedAt: ts(0, 3),
     },
@@ -355,7 +359,7 @@ export async function seedDataCenters(userId: string, displayName: string): Prom
       category: 'University / Research',
       description: 'Researchers and journalists tracking the actual vs. claimed environmental footprint of AI development.',
       location: {},
-      links: { website: 'https://aiclimatewatch.org' },
+      socialLinks: { website: 'https://aiclimatewatch.org' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 44, flags: 0, createdAt: ts(0, 5), updatedAt: ts(0, 5),
     },
@@ -411,7 +415,7 @@ export async function seedDataCenters(userId: string, displayName: string): Prom
   }
 
   const [groupRefs, resourceRefs, eventRefs, challengeRef] = await Promise.all([
-    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), g))),
+    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), withGroupDefaults(g)))),
     Promise.all(resources.map(r => addDoc(collection(db, 'resources'), r))),
     Promise.all(events.map(e => addDoc(collection(db, 'events'), e))),
     addDoc(collection(db, 'challenges'), challenge),
@@ -465,7 +469,7 @@ export async function seedNewEarthCommunities(userId: string, displayName: strin
       category: 'Nonprofit',
       description: 'Worldwide network connecting over 10,000 ecovillages in more than 100 countries. Training, events, and community listings.',
       location: {},
-      links: { website: 'https://ecovillage.org', facebook: 'https://facebook.com/gen.ecovillage' },
+      socialLinks: { website: 'https://ecovillage.org', facebook: 'https://facebook.com/gen.ecovillage' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 94, flags: 0, createdAt: ts(0, 8), updatedAt: ts(0, 8),
     },
@@ -474,7 +478,7 @@ export async function seedNewEarthCommunities(userId: string, displayName: strin
       category: 'Nonprofit',
       description: 'Largest North American database of intentional communities — cohousing, communes, ecovillages, and co-ops.',
       location: {},
-      links: { website: 'https://www.ic.org', instagram: 'https://instagram.com/intentional.community' },
+      socialLinks: { website: 'https://www.ic.org', instagram: 'https://instagram.com/intentional.community' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 67, flags: 0, createdAt: ts(0, 10), updatedAt: ts(0, 10),
     },
@@ -483,7 +487,7 @@ export async function seedNewEarthCommunities(userId: string, displayName: strin
       category: 'Grassroots / Community',
       description: 'Community-led initiatives building local resilience and transitioning away from fossil fuels. Active in 50+ countries.',
       location: {},
-      links: { website: 'https://transitionnetwork.org' },
+      socialLinks: { website: 'https://transitionnetwork.org' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 51, flags: 0, createdAt: ts(0, 12), updatedAt: ts(0, 12),
     },
@@ -550,7 +554,7 @@ export async function seedNewEarthCommunities(userId: string, displayName: strin
   }
 
   const [groupRefs, resourceRefs, eventRefs, challengeRef] = await Promise.all([
-    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), g))),
+    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), withGroupDefaults(g)))),
     Promise.all(resources.map(r => addDoc(collection(db, 'resources'), r))),
     Promise.all(events.map(e => addDoc(collection(db, 'events'), e))),
     addDoc(collection(db, 'challenges'), challenge),
@@ -606,8 +610,8 @@ export async function seedCorporateFarmAcquisitions(userId: string, displayName:
       category: 'Nonprofit',
       description: 'National coalition defending family farmers against consolidation, corporate contract farming, and land loss.',
       location: { city: 'Washington', state: 'DC', country: 'US' },
-      coordinates: { lat: 38.9072, lng: -77.0369 },
-      links: { website: 'https://familyfarmaction.org', twitter: 'https://twitter.com/FamilyFarmActn' },
+      coordinates: { latitude: 38.9072, longitude: -77.0369 },
+      socialLinks: { website: 'https://familyfarmaction.org', twitter: 'https://twitter.com/FamilyFarmActn' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 58, flags: 0, createdAt: ts(0, 12), updatedAt: ts(0, 12),
     },
@@ -616,8 +620,8 @@ export async function seedCorporateFarmAcquisitions(userId: string, displayName:
       category: 'Nonprofit',
       description: 'One of the oldest US farm organizations, advocating for fair prices, rural communities, and anti-monopoly policies in agriculture.',
       location: { city: 'Washington', state: 'DC', country: 'US' },
-      coordinates: { lat: 38.9072, lng: -77.0369 },
-      links: { website: 'https://nfu.org', facebook: 'https://facebook.com/nationalfarmersunion' },
+      coordinates: { latitude: 38.9072, longitude: -77.0369 },
+      socialLinks: { website: 'https://nfu.org', facebook: 'https://facebook.com/nationalfarmersunion' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 41, flags: 0, createdAt: ts(1), updatedAt: ts(1),
     },
@@ -626,8 +630,8 @@ export async function seedCorporateFarmAcquisitions(userId: string, displayName:
       category: 'Nonprofit',
       description: 'Minnesota-based org working on farmland access, beginning farmer programs, and farmer-to-farmer networks in the Upper Midwest.',
       location: { city: 'Minneapolis', state: 'MN', country: 'US' },
-      coordinates: { lat: 44.9778, lng: -93.265 },
-      links: { website: 'https://landstewardshipproject.org' },
+      coordinates: { latitude: 44.9778, longitude: -93.265 },
+      socialLinks: { website: 'https://landstewardshipproject.org' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 27, flags: 0, createdAt: ts(1, 12), updatedAt: ts(1, 12),
     },
@@ -683,7 +687,7 @@ export async function seedCorporateFarmAcquisitions(userId: string, displayName:
   }
 
   const [groupRefs, resourceRefs, eventRefs, challengeRef] = await Promise.all([
-    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), g))),
+    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), withGroupDefaults(g)))),
     Promise.all(resources.map(r => addDoc(collection(db, 'resources'), r))),
     Promise.all(events.map(e => addDoc(collection(db, 'events'), e))),
     addDoc(collection(db, 'challenges'), challenge),
@@ -738,7 +742,7 @@ export async function seedSolarpunk(userId: string, displayName: string): Promis
       category: 'Online Community',
       description: 'Online magazine and community hub publishing solarpunk fiction, theory, and practical guides to building the world we want.',
       location: {},
-      links: { website: 'https://solarpunkmagazine.com', instagram: 'https://instagram.com/solarpunkmag' },
+      socialLinks: { website: 'https://solarpunkmagazine.com', instagram: 'https://instagram.com/solarpunkmag' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 77, flags: 0, createdAt: ts(0, 6), updatedAt: ts(0, 6),
     },
@@ -747,8 +751,8 @@ export async function seedSolarpunk(userId: string, displayName: string): Promis
       category: 'Grassroots / Community',
       description: 'Bay Area coalition linking climate, labor, and environmental justice movements. Community organizing, skill-shares, and direct action.',
       location: { city: 'Oakland', state: 'CA', country: 'US' },
-      coordinates: { lat: 37.8044, lng: -122.2712 },
-      links: { website: 'https://sunflower-alliance.org', twitter: 'https://twitter.com/SunflowerAllnc' },
+      coordinates: { latitude: 37.8044, longitude: -122.2712 },
+      socialLinks: { website: 'https://sunflower-alliance.org', twitter: 'https://twitter.com/SunflowerAllnc' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 55, flags: 0, createdAt: ts(0, 8), updatedAt: ts(0, 8),
     },
@@ -757,8 +761,8 @@ export async function seedSolarpunk(userId: string, displayName: string): Promis
       category: 'Grassroots / Community',
       description: 'Local chapter running community gardens, tool libraries, repair cafes, and mutual aid networks across New York City.',
       location: { city: 'New York', state: 'NY', country: 'US' },
-      coordinates: { lat: 40.7128, lng: -74.006 },
-      links: { instagram: 'https://instagram.com/solarpunknyc' },
+      coordinates: { latitude: 40.7128, longitude: -74.006 },
+      socialLinks: { instagram: 'https://instagram.com/solarpunknyc' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 39, flags: 0, createdAt: ts(0, 11), updatedAt: ts(0, 11),
     },
@@ -824,7 +828,7 @@ export async function seedSolarpunk(userId: string, displayName: string): Promis
   }
 
   const [groupRefs, resourceRefs, eventRefs, challengeRef] = await Promise.all([
-    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), g))),
+    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), withGroupDefaults(g)))),
     Promise.all(resources.map(r => addDoc(collection(db, 'resources'), r))),
     Promise.all(events.map(e => addDoc(collection(db, 'events'), e))),
     addDoc(collection(db, 'challenges'), challenge),
@@ -880,8 +884,8 @@ export async function seedUrbanRewilding(userId: string, displayName: string): P
       category: 'Nonprofit',
       description: 'Leading UK rewilding charity working with landowners, communities, and governments to restore wild nature at scale.',
       location: { city: 'London', country: 'UK' },
-      coordinates: { lat: 51.5074, lng: -0.1278 },
-      links: { website: 'https://www.rewildingbritain.org.uk', twitter: 'https://twitter.com/RewildingB' },
+      coordinates: { latitude: 51.5074, longitude: -0.1278 },
+      socialLinks: { website: 'https://www.rewildingbritain.org.uk', twitter: 'https://twitter.com/RewildingB' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 83, flags: 0, createdAt: ts(0, 16), updatedAt: ts(0, 16),
     },
@@ -890,8 +894,8 @@ export async function seedUrbanRewilding(userId: string, displayName: string): P
       category: 'Nonprofit',
       description: 'Building the largest nature reserve in the continental US by stitching together private and public land on the Great Plains.',
       location: { city: 'Bozeman', state: 'MT', country: 'US' },
-      coordinates: { lat: 45.677, lng: -111.0429 },
-      links: { website: 'https://www.americanprairie.org', instagram: 'https://instagram.com/americanprairie' },
+      coordinates: { latitude: 45.677, longitude: -111.0429 },
+      socialLinks: { website: 'https://www.americanprairie.org', instagram: 'https://instagram.com/americanprairie' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 62, flags: 0, createdAt: ts(0, 18), updatedAt: ts(0, 18),
     },
@@ -900,7 +904,7 @@ export async function seedUrbanRewilding(userId: string, displayName: string): P
       category: 'Grassroots / Community',
       description: 'Citizen-science project connecting neighborhoods with native plantings to create migration corridors for bees, butterflies, and birds.',
       location: {},
-      links: { website: 'https://www.pollinatorpathway.com' },
+      socialLinks: { website: 'https://www.pollinatorpathway.com' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 48, flags: 0, createdAt: ts(1, 4), updatedAt: ts(1, 4),
     },
@@ -967,7 +971,7 @@ export async function seedUrbanRewilding(userId: string, displayName: string): P
   }
 
   const [groupRefs, resourceRefs, eventRefs, challengeRef] = await Promise.all([
-    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), g))),
+    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), withGroupDefaults(g)))),
     Promise.all(resources.map(r => addDoc(collection(db, 'resources'), r))),
     Promise.all(events.map(e => addDoc(collection(db, 'events'), e))),
     addDoc(collection(db, 'challenges'), challenge),
@@ -1023,8 +1027,8 @@ export async function seedRightToRepair(userId: string, displayName: string): Pr
       category: 'Online Community',
       description: 'Global repair community with 100,000+ free repair guides, a spare parts store, and active lobbying for right-to-repair legislation worldwide.',
       location: { city: 'San Luis Obispo', state: 'CA', country: 'US' },
-      coordinates: { lat: 35.2828, lng: -120.6596 },
-      links: { website: 'https://www.ifixit.com', twitter: 'https://twitter.com/iFixit' },
+      coordinates: { latitude: 35.2828, longitude: -120.6596 },
+      socialLinks: { website: 'https://www.ifixit.com', twitter: 'https://twitter.com/iFixit' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 112, flags: 0, createdAt: ts(0, 20), updatedAt: ts(0, 20),
     },
@@ -1033,7 +1037,7 @@ export async function seedRightToRepair(userId: string, displayName: string): Pr
       category: 'Nonprofit',
       description: 'Network of 2,500+ free repair events worldwide where volunteers help people fix their broken items instead of throwing them away.',
       location: {},
-      links: { website: 'https://www.repaircafe.org', instagram: 'https://instagram.com/repaircafe_international' },
+      socialLinks: { website: 'https://www.repaircafe.org', instagram: 'https://instagram.com/repaircafe_international' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 78, flags: 0, createdAt: ts(1, 2), updatedAt: ts(1, 2),
     },
@@ -1042,8 +1046,8 @@ export async function seedRightToRepair(userId: string, displayName: string): Pr
       category: 'Nonprofit',
       description: 'Public interest research group leading the Right to Repair legislative campaign across US states. Tracks bills and coordinates advocacy.',
       location: { city: 'Washington', state: 'DC', country: 'US' },
-      coordinates: { lat: 38.9072, lng: -77.0369 },
-      links: { website: 'https://pirg.org/campaigns/right-to-repair/', twitter: 'https://twitter.com/USPIRG' },
+      coordinates: { latitude: 38.9072, longitude: -77.0369 },
+      socialLinks: { website: 'https://pirg.org/campaigns/right-to-repair/', twitter: 'https://twitter.com/USPIRG' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 54, flags: 0, createdAt: ts(1, 8), updatedAt: ts(1, 8),
     },
@@ -1110,7 +1114,7 @@ export async function seedRightToRepair(userId: string, displayName: string): Pr
   }
 
   const [groupRefs, resourceRefs, eventRefs, challengeRef] = await Promise.all([
-    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), g))),
+    Promise.all(groups.map(g => addDoc(collection(db, 'groups'), withGroupDefaults(g)))),
     Promise.all(resources.map(r => addDoc(collection(db, 'resources'), r))),
     Promise.all(events.map(e => addDoc(collection(db, 'events'), e))),
     addDoc(collection(db, 'challenges'), challenge),
@@ -1272,7 +1276,7 @@ export async function seedBoycotts(userId: string, displayName: string): Promise
       category: 'Grassroots / Community',
       description: 'Consumer coalition coordinating boycott actions and tracking Tesla sales impacts. Maintains a directory of EV alternatives with side-by-side comparisons.',
       location: {},
-      links: { instagram: 'https://instagram.com/dontbuytesl' },
+      socialLinks: { instagram: 'https://instagram.com/dontbuytesl' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 76, flags: 0, createdAt: ts(0, 0, 25), updatedAt: ts(0, 0, 25),
     },
@@ -1281,7 +1285,7 @@ export async function seedBoycotts(userId: string, displayName: string): Promise
       category: 'Grassroots / Community',
       description: 'Network of current and former EV owners — including ex-Tesla owners who have switched — sharing experiences and helping others make the transition.',
       location: {},
-      links: { website: 'https://evownersforaccountability.org' },
+      socialLinks: { website: 'https://evownersforaccountability.org' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 51, flags: 0, createdAt: ts(0, 1),     updatedAt: ts(0, 1),
     },
@@ -1337,7 +1341,7 @@ export async function seedBoycotts(userId: string, displayName: string): Promise
   }
 
   const [teslaGroupRefs, teslaResourceRefs, teslaEventRefs, teslaChallengeRef] = await Promise.all([
-    Promise.all(teslaGroups.map(g => addDoc(collection(db, 'groups'), g))),
+    Promise.all(teslaGroups.map(g => addDoc(collection(db, 'groups'), withGroupDefaults(g)))),
     Promise.all(teslaResources.map(r => addDoc(collection(db, 'resources'), r))),
     Promise.all(teslaEvents.map(e => addDoc(collection(db, 'events'), e))),
     addDoc(collection(db, 'challenges'), teslaChallenge),
@@ -1383,7 +1387,7 @@ export async function seedBoycotts(userId: string, displayName: string): Promise
       category: 'Nonprofit',
       description: 'Global movement demanding transparency from fashion brands. Known for #WhoMadeMyClothes campaign. Active in 90+ countries.',
       location: { city: 'London', country: 'UK' },
-      links: { website: 'https://www.fashionrevolution.org', instagram: 'https://instagram.com/fash_rev' },
+      socialLinks: { website: 'https://www.fashionrevolution.org', instagram: 'https://instagram.com/fash_rev' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 95, flags: 0, createdAt: ts(0, 4), updatedAt: ts(0, 4),
     },
@@ -1392,7 +1396,7 @@ export async function seedBoycotts(userId: string, displayName: string): Promise
       category: 'Nonprofit',
       description: 'Advocacy org fighting for living wages and safe conditions for the 80% of garment workers who are women. Campaigns, petitions, and brand scorecards.',
       location: { city: 'San Francisco', state: 'CA', country: 'US' },
-      links: { website: 'https://remake.world', instagram: 'https://instagram.com/remakeourworld' },
+      socialLinks: { website: 'https://remake.world', instagram: 'https://instagram.com/remakeourworld' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 72, flags: 0, createdAt: ts(0, 6), updatedAt: ts(0, 6),
     },
@@ -1401,7 +1405,7 @@ export async function seedBoycotts(userId: string, displayName: string): Promise
       category: 'Grassroots / Community',
       description: 'Hyperlocal gifting and borrowing communities in thousands of neighborhoods. The original anti-consumption network for clothing and goods.',
       location: {},
-      links: { website: 'https://buynothingproject.org', facebook: 'https://facebook.com/groups/buynothingproject' },
+      socialLinks: { website: 'https://buynothingproject.org', facebook: 'https://facebook.com/groups/buynothingproject' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 54, flags: 0, createdAt: ts(0, 9), updatedAt: ts(0, 9),
     },
@@ -1458,7 +1462,7 @@ export async function seedBoycotts(userId: string, displayName: string): Promise
   }
 
   const [fashionGroupRefs, fashionResourceRefs, fashionEventRefs, fashionChallengeRef] = await Promise.all([
-    Promise.all(fashionGroups.map(g => addDoc(collection(db, 'groups'), g))),
+    Promise.all(fashionGroups.map(g => addDoc(collection(db, 'groups'), withGroupDefaults(g)))),
     Promise.all(fashionResources.map(r => addDoc(collection(db, 'resources'), r))),
     Promise.all(fashionEvents.map(e => addDoc(collection(db, 'events'), e))),
     addDoc(collection(db, 'challenges'), fashionChallenge),

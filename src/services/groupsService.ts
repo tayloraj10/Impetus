@@ -13,6 +13,10 @@ function toGroup(id: string, data: any): Group {
   return {
     ...data,
     id,
+    socialLinks: data.socialLinks ?? {},
+    causeCategories: data.causeCategories ?? [],
+    featured: data.featured ?? false,
+    userIds: data.userIds ?? [],
     likes: data.likes ?? 0,
     flags: data.flags ?? 0,
     createdAt: data.createdAt?.toDate() ?? new Date(),
@@ -60,11 +64,15 @@ export async function createGroup(
   topicSlug: string,
 ): Promise<void> {
   const locationQuery = input.location ? buildLocationQuery(input.location) : ''
-  const coordinates = locationQuery ? await geocodeAddress(locationQuery) : null
+  const geocoded = locationQuery ? await geocodeAddress(locationQuery) : null
+  const coordinates = geocoded ? { latitude: geocoded.lat, longitude: geocoded.lng } : null
 
   const ref = await addDoc(collection(db, 'groups'), {
     ...input,
-    links: input.links ?? {},
+    socialLinks: input.socialLinks ?? {},
+    causeCategories: input.causeCategories ?? [],
+    featured: false,
+    userIds: [userId],
     imageUrl: input.imageUrl ?? null,
     ...(coordinates ? { coordinates } : {}),
     moderationStatus: 'pending_review',
@@ -176,7 +184,7 @@ export async function deleteGroup(id: string, topicId: string): Promise<void> {
 
 export async function updateGroup(
   id: string,
-  update: Partial<Pick<Group, 'name' | 'description' | 'location' | 'links'>>,
+  update: Partial<Pick<Group, 'name' | 'description' | 'location' | 'socialLinks'>>,
 ): Promise<void> {
   await updateDoc(doc(db, 'groups', id), { ...update, updatedAt: serverTimestamp() })
 }

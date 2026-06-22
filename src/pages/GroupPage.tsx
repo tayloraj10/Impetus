@@ -55,7 +55,7 @@ function GroupDetails({ group }: { group: Group }) {
 
   const locationStr = group.location ? formatLocation(group.location) : null
 
-  const links = group.links ?? {}
+  const links = group.socialLinks ?? {}
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
