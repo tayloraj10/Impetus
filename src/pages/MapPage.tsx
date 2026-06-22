@@ -52,13 +52,16 @@ export function MapPage() {
   const topicMap = useMemo(() => new Map(topics.map(t => [t.id, t])), [topics])
 
   const filteredEvents = events.filter(e =>
-    e.coordinates && (!selectedTopicId || e.topicId === selectedTopicId)
+    Number.isFinite(e.coordinates?.lat) && Number.isFinite(e.coordinates?.lng) &&
+    (!selectedTopicId || e.topicId === selectedTopicId)
   )
   const filteredGroups = groups.filter(g =>
-    g.coordinates && (!selectedTopicId || g.topicId === selectedTopicId)
+    Number.isFinite(g.coordinates?.latitude) && Number.isFinite(g.coordinates?.longitude) &&
+    (!selectedTopicId || g.topicId === selectedTopicId)
   )
   const filteredResources = resources.filter(r =>
-    r.coordinates && (!selectedTopicId || r.topicId === selectedTopicId)
+    Number.isFinite(r.coordinates?.lat) && Number.isFinite(r.coordinates?.lng) &&
+    (!selectedTopicId || r.topicId === selectedTopicId)
   )
 
   const totalPins = (showEvents ? filteredEvents.length : 0) + (showGroups ? filteredGroups.length : 0) + (showResources ? filteredResources.length : 0)

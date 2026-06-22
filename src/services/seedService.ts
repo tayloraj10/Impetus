@@ -140,7 +140,7 @@ export async function seedTrashCleanups(userId: string, displayName: string): Pr
       topicId, title: 'Austin Earth Day Cleanup',
       date: Timestamp.fromDate(new Date('2026-06-15T09:00:00')),
       endDate: Timestamp.fromDate(new Date('2026-06-15T13:00:00')),
-      location: 'Zilker Park, Austin, TX',
+      location: { city: 'Austin', state: 'TX', country: 'US' },
       coordinates: { lat: 30.2667, lng: -97.7713 },
       isVirtual: false,
       externalUrl: 'https://keepaustinclean.org/events',
@@ -151,7 +151,7 @@ export async function seedTrashCleanups(userId: string, displayName: string): Pr
     {
       topicId, title: 'National CleanUp Day',
       date: Timestamp.fromDate(new Date('2026-09-19T08:00:00')),
-      location: 'Nationwide — find your local event at cleanup.org',
+      location: {},
       isVirtual: false,
       externalUrl: 'https://www.cleanup.org',
       description: 'The biggest single-day cleanup event in the US. Events registered in all 50 states.',
@@ -277,7 +277,7 @@ export async function seedAmazonBoycott(
     {
       topicId, title: 'Prime Day Alternatives Fair',
       date: Timestamp.fromDate(new Date('2026-07-11T10:00:00')),
-      location: 'Virtual + local chapters',
+      location: {},
       isVirtual: true,
       externalUrl: 'https://amazonlaborunion.org',
       description: 'Community market showcasing local and ethical alternatives to Amazon. Simultaneous events in 12 cities.',
@@ -396,7 +396,8 @@ export async function seedDataCenters(userId: string, displayName: string): Prom
     {
       topicId, title: 'Tech Climate Accountability Summit 2026',
       date: Timestamp.fromDate(new Date('2026-08-20T09:00:00')),
-      location: 'San Francisco, CA + Virtual',
+      location: { city: 'San Francisco', state: 'CA', country: 'US' },
+      coordinates: { lat: 37.7749, lng: -122.4194 },
       isVirtual: false,
       externalUrl: 'https://techclimatesummit.org',
       description: 'Annual conference bringing together researchers, regulators, and advocates on AI\'s environmental impact.',
@@ -524,7 +525,7 @@ export async function seedNewEarthCommunities(userId: string, displayName: strin
     {
       topicId, title: 'Global Ecovillage Convergence 2026',
       date: Timestamp.fromDate(new Date('2026-10-10T09:00:00')),
-      location: 'Findhorn, Scotland',
+      location: { city: 'Findhorn', country: 'UK' },
       coordinates: { lat: 57.659, lng: -3.6073 },
       isVirtual: false,
       externalUrl: 'https://ecovillage.org',
@@ -535,7 +536,7 @@ export async function seedNewEarthCommunities(userId: string, displayName: strin
     {
       topicId, title: 'Starting an Intentional Community — Weekend Workshop',
       date: Timestamp.fromDate(new Date('2026-07-18T10:00:00')),
-      location: 'Virtual',
+      location: {},
       isVirtual: true,
       externalUrl: 'https://www.ic.org/events/',
       description: 'Two-day online workshop covering legal structures, land access, governance, and conflict resolution.',
@@ -668,7 +669,7 @@ export async function seedCorporateFarmAcquisitions(userId: string, displayName:
     {
       topicId, title: 'Farm Crisis Town Hall — Monthly Virtual Call',
       date: Timestamp.fromDate(new Date('2026-06-18T19:00:00')),
-      location: 'Virtual (Zoom)',
+      location: {},
       isVirtual: true,
       externalUrl: 'https://familyfarmaction.org/events',
       description: 'Monthly call with farmers and advocates on corporate consolidation in agriculture. Q&A with policy experts.',
@@ -799,7 +800,7 @@ export async function seedSolarpunk(userId: string, displayName: string): Promis
     {
       topicId, title: 'Solarpunk Summit 2026',
       date: Timestamp.fromDate(new Date('2026-09-05T10:00:00')),
-      location: 'Virtual + Regional Hubs',
+      location: {},
       isVirtual: true,
       externalUrl: 'https://solarpunkmagazine.com/summit',
       description: 'Annual gathering of solarpunk thinkers, makers, and organizers. Art, workshops, panels, and project showcases.',
@@ -809,7 +810,7 @@ export async function seedSolarpunk(userId: string, displayName: string): Promis
     {
       topicId, title: 'Community Solar Workshop',
       date: Timestamp.fromDate(new Date('2026-07-05T13:00:00')),
-      location: 'Virtual',
+      location: {},
       isVirtual: true,
       externalUrl: 'https://sunflower-alliance.org/events',
       description: 'Learn how to set up a community solar co-op in your neighborhood. Covers financing, permitting, and collective ownership models.',
@@ -941,7 +942,7 @@ export async function seedUrbanRewilding(userId: string, displayName: string): P
     {
       topicId, title: 'UK Rewilding Symposium 2026',
       date: Timestamp.fromDate(new Date('2026-11-14T09:00:00')),
-      location: 'London, UK + Virtual',
+      location: { city: 'London', country: 'UK' },
       coordinates: { lat: 51.5074, lng: -0.1278 },
       isVirtual: false,
       externalUrl: 'https://www.rewildingbritain.org.uk/events',
@@ -952,7 +953,7 @@ export async function seedUrbanRewilding(userId: string, displayName: string): P
     {
       topicId, title: 'Plant a Native Garden Day',
       date: Timestamp.fromDate(new Date('2026-08-08T08:00:00')),
-      location: 'Nationwide — register your yard',
+      location: {},
       isVirtual: false,
       externalUrl: 'https://www.nwf.org/garden-for-wildlife',
       description: 'Coordinated day of native planting across the US. Register your yard to be counted in the national map.',
@@ -1084,7 +1085,7 @@ export async function seedRightToRepair(userId: string, displayName: string): Pr
     {
       topicId, title: 'National Repair Day 2026',
       date: Timestamp.fromDate(new Date('2026-10-17T10:00:00')),
-      location: 'Nationwide — find a local Repair Café',
+      location: {},
       isVirtual: false,
       externalUrl: 'https://www.repaircafe.org/en/visit/',
       description: 'Annual day of repair events across the country. Bring your broken items — volunteers will help you fix them for free.',
@@ -1094,7 +1095,7 @@ export async function seedRightToRepair(userId: string, displayName: string): Pr
     {
       topicId, title: 'Right to Repair Day of Action — DC',
       date: Timestamp.fromDate(new Date('2026-07-29T09:00:00')),
-      location: 'Washington, DC',
+      location: { city: 'Washington', state: 'DC', country: 'US' },
       coordinates: { lat: 38.9072, lng: -77.0369 },
       isVirtual: false,
       externalUrl: 'https://pirg.org/campaigns/right-to-repair/',
@@ -1322,7 +1323,7 @@ export async function seedBoycotts(userId: string, displayName: string): Promise
     {
       topicId: teslaId, title: 'EV Alternatives Showcase — Virtual',
       date: Timestamp.fromDate(new Date('2026-06-14T14:00:00')),
-      location: 'Virtual (Zoom)',
+      location: {},
       isVirtual: true,
       externalUrl: 'https://evownersforaccountability.org/events',
       description: 'Live walkthroughs of Rivian R2, Chevy Equinox EV, Kia EV6, and VW ID.4 with owner Q&A.',
@@ -1387,6 +1388,7 @@ export async function seedBoycotts(userId: string, displayName: string): Promise
       category: 'Nonprofit',
       description: 'Global movement demanding transparency from fashion brands. Known for #WhoMadeMyClothes campaign. Active in 90+ countries.',
       location: { city: 'London', country: 'UK' },
+      coordinates: { latitude: 51.5074, longitude: -0.1278 },
       socialLinks: { website: 'https://www.fashionrevolution.org', instagram: 'https://instagram.com/fash_rev' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 95, flags: 0, createdAt: ts(0, 4), updatedAt: ts(0, 4),
@@ -1396,6 +1398,7 @@ export async function seedBoycotts(userId: string, displayName: string): Promise
       category: 'Nonprofit',
       description: 'Advocacy org fighting for living wages and safe conditions for the 80% of garment workers who are women. Campaigns, petitions, and brand scorecards.',
       location: { city: 'San Francisco', state: 'CA', country: 'US' },
+      coordinates: { latitude: 37.7749, longitude: -122.4194 },
       socialLinks: { website: 'https://remake.world', instagram: 'https://instagram.com/remakeourworld' },
       moderationStatus: 'live', submittedBy: SEED_USER, submittedByDisplayName: SEED_NAME,
       likes: 72, flags: 0, createdAt: ts(0, 6), updatedAt: ts(0, 6),
@@ -1443,7 +1446,7 @@ export async function seedBoycotts(userId: string, displayName: string): Promise
       topicId: fashionId, title: 'Fashion Revolution Week 2026',
       date: Timestamp.fromDate(new Date('2026-04-24T00:00:00')),
       endDate: Timestamp.fromDate(new Date('2026-04-30T23:59:59')),
-      location: 'Worldwide + Virtual',
+      location: {},
       isVirtual: false,
       externalUrl: 'https://www.fashionrevolution.org/get-involved/',
       description: 'Annual week of action on the anniversary of the Rana Plaza factory collapse. Thousands of events worldwide asking brands #WhoMadeMyClothes.',
