@@ -15,10 +15,9 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig)
 
-// VITE_USE_DEV_DB=true (in a gitignored .env.local) points local dev at the
-// isolated 'impetus-dev' Firestore database instead of production, so seeding
-// and testing never touches real data. Unset/false in any deployed build.
-const useDevDb = import.meta.env.VITE_USE_DEV_DB === 'true'
+// Only the Vite dev server can use the isolated dev database. Vite also loads
+// .env.local during production builds, so guard with DEV to keep Hosting on prod.
+const useDevDb = import.meta.env.DEV && import.meta.env.VITE_USE_DEV_DB === 'true'
 
 export const db = useDevDb ? getFirestore(app, 'impetus-dev') : getFirestore(app)
 export const auth = getAuth(app)
