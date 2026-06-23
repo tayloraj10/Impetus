@@ -69,21 +69,21 @@ export function LocationInput({ value, onChange, showStreet = false, required = 
         </label>
       )}
       <div className="grid grid-cols-2 gap-2">
-        <label className="block">
+        <label className="block col-span-2 sm:col-span-1">
           <span className="block text-xs text-zinc-400 mb-1">City</span>
           <input value={value.city ?? ''} onChange={e => set('city', e.target.value)} onBlur={() => applyCasing('city')} className={INPUT_CLASS} />
         </label>
-        <label className="block">
+        <label className="block col-span-2 sm:col-span-1">
           <span className="block text-xs text-zinc-400 mb-1">State / Province</span>
           <input value={value.state ?? ''} onChange={e => set('state', e.target.value)} onBlur={() => applyCasing('state')} className={INPUT_CLASS} />
         </label>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <label className="block">
+        <label className="block col-span-2 sm:col-span-1">
           <span className="block text-xs text-zinc-400 mb-1">Zip / Postal Code</span>
           <input value={value.zipCode ?? ''} onChange={e => set('zipCode', e.target.value)} className={INPUT_CLASS} />
         </label>
-        <label className="block">
+        <label className="block col-span-2 sm:col-span-1">
           <span className="block text-xs text-zinc-400 mb-1">Country</span>
           <input value={value.country ?? ''} onChange={e => set('country', e.target.value)} onBlur={() => applyCasing('country')} className={INPUT_CLASS} />
         </label>

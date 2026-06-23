@@ -14,10 +14,15 @@ export function Header() {
   const navigate = useNavigate()
   const [searchValue, setSearchValue] = useState('')
   const [authModalOpen, setAuthModalOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     if (emailLinkPending) setAuthModalOpen(true)
   }, [emailLinkPending])
+
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [pathname])
 
   function handleSearchSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -91,6 +96,23 @@ export function Header() {
             </svg>
           </Link>
 
+          <button
+            onClick={() => setMobileMenuOpen(v => !v)}
+            className="sm:hidden p-1.5 text-zinc-400 hover:text-zinc-200 transition-colors"
+            aria-label="Menu"
+            aria-expanded={mobileMenuOpen}
+          >
+            {mobileMenuOpen ? (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            ) : (
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            )}
+          </button>
+
           {!loading && (
             user ? (
               <div className="flex items-center gap-3">
@@ -115,6 +137,22 @@ export function Header() {
           )}
         </div>
       </div>
+
+      {mobileMenuOpen && (
+        <div className="sm:hidden border-t border-zinc-800 px-4 py-3 space-y-3">
+          <nav className="flex flex-col gap-1">
+            <NavLink to="/" active={pathname === '/'}>Feed</NavLink>
+            <NavLink to="/topics" active={pathname === '/topics'}>Topics</NavLink>
+            <NavLink to="/groups" active={pathname === '/groups'}>Groups</NavLink>
+            <NavLink to="/map" active={pathname === '/map'}>Map</NavLink>
+            <NavLink to="/calendar" active={pathname === '/calendar'}>Calendar</NavLink>
+            <NavLink to="/definitions" active={pathname === '/definitions'}>Definitions</NavLink>
+            {(role === 'admin' || role === 'moderator') && (
+              <NavLink to="/admin" active={pathname.startsWith('/admin')}>Admin</NavLink>
+            )}
+          </nav>
+        </div>
+      )}
     </header>
     </>
   )

@@ -63,12 +63,12 @@ export function TopicPage() {
 
       {hasTabs && (
         <div className="mt-6">
-          <div className="flex gap-0.5 border-b border-zinc-800 mb-6">
+          <div className="flex gap-0.5 border-b border-zinc-800 mb-6 overflow-x-auto">
             {topic.enabledComponents.map(comp => (
               <button
                 key={comp}
                 onClick={() => setActiveTab(comp)}
-                className={`px-4 py-2.5 text-sm font-medium transition-all cursor-pointer -mb-px border-b-2 rounded-t-md ${
+                className={`px-4 py-2.5 text-sm font-medium transition-all cursor-pointer -mb-px border-b-2 rounded-t-md whitespace-nowrap ${
                   currentTab === comp
                     ? 'text-emerald-400 border-emerald-400 bg-emerald-500/5'
                     : 'text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-zinc-800/50'

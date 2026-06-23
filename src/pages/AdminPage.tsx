@@ -850,12 +850,12 @@ function ModerationSection({ topicMap }: { topicMap: Record<string, string> }) {
         </div>
       ) : (
         <>
-          <div className="flex gap-0.5 border-b border-zinc-800 mb-4">
+          <div className="flex gap-0.5 border-b border-zinc-800 mb-4 overflow-x-auto">
             {tabs.map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`px-4 py-2 text-sm font-medium transition-all cursor-pointer -mb-px border-b-2 rounded-t-md flex items-center gap-1.5 ${
+                className={`px-4 py-2 text-sm font-medium transition-all cursor-pointer -mb-px border-b-2 rounded-t-md flex items-center gap-1.5 whitespace-nowrap ${
                   tab === key
                     ? 'text-amber-400 border-amber-400 bg-amber-500/5'
                     : 'text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-zinc-800/50'
@@ -1610,12 +1610,12 @@ function RemovedSection({ topicMap }: { topicMap: Record<string, string> }) {
         </div>
       ) : (
         <>
-          <div className="flex gap-0.5 border-b border-zinc-800 mb-4">
+          <div className="flex gap-0.5 border-b border-zinc-800 mb-4 overflow-x-auto">
             {tabs.map(({ key, label }) => (
               <button
                 key={key}
                 onClick={() => setTab(key)}
-                className={`px-4 py-2 text-sm font-medium transition-all cursor-pointer -mb-px border-b-2 rounded-t-md flex items-center gap-1.5 ${
+                className={`px-4 py-2 text-sm font-medium transition-all cursor-pointer -mb-px border-b-2 rounded-t-md flex items-center gap-1.5 whitespace-nowrap ${
                   tab === key
                     ? 'text-zinc-300 border-zinc-400 bg-zinc-800/50'
                     : 'text-zinc-500 border-transparent hover:text-zinc-300 hover:bg-zinc-800/50'
