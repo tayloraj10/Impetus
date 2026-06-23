@@ -7,6 +7,12 @@ import type { FeedItem } from '../types'
 
 type TypeFilter = FeedItem['type'] | 'all'
 
+function typeFilterLabel(type: TypeFilter): string {
+  if (type === 'all') return 'All types'
+  if (type === 'map_pin') return 'Map Pins'
+  return type.charAt(0).toUpperCase() + type.slice(1) + 's'
+}
+
 export function HomePage() {
   const { topics, feedItems, loading } = useTopicFeed()
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null)
@@ -61,10 +67,10 @@ export function HomePage() {
           ))}
         </div>
         <div className="flex gap-1.5 overflow-x-auto pb-0.5 [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-          {(['all', 'group', 'resource', 'event', 'challenge'] as const).map(type => (
+          {(['all', 'group', 'resource', 'event', 'challenge', 'map_pin'] as const).map(type => (
             <MobileChip
               key={type}
-              label={type === 'all' ? 'All types' : type.charAt(0).toUpperCase() + type.slice(1) + 's'}
+              label={typeFilterLabel(type)}
               active={typeFilter === type}
               onClick={() => setTypeFilter(type)}
               accent
@@ -101,7 +107,7 @@ export function HomePage() {
 
           <p className="text-xs text-zinc-500 uppercase tracking-wider mt-5 mb-3 shrink-0">Activity Type</p>
           <div className="space-y-1 shrink-0">
-            {(['all', 'group', 'resource', 'event', 'challenge'] as const).map(type => (
+            {(['all', 'group', 'resource', 'event', 'challenge', 'map_pin'] as const).map(type => (
               <button
                 key={type}
                 onClick={() => setTypeFilter(type)}
@@ -110,7 +116,7 @@ export function HomePage() {
                     : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800/40 border-l-transparent'
                   }`}
               >
-                {type === 'all' ? 'All activity' : type.charAt(0).toUpperCase() + type.slice(1) + 's'}
+                {type === 'all' ? 'All activity' : typeFilterLabel(type)}
               </button>
             ))}
           </div>
