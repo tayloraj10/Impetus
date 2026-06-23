@@ -11,6 +11,7 @@ import { updateGroup, deleteGroup } from '../services/groupsService'
 import { updateResource, deleteResource } from '../services/resourcesService'
 import { updateEvent, deleteEvent } from '../services/eventsService'
 import { deleteChallengeSubmission, updateChallengeSubmission } from '../services/challengesService'
+import { nextEditStatus } from '../services/moderationUtils'
 import { CropModal } from '../components/ui/CropModal'
 import { Modal } from '../components/ui/Modal'
 import { LocationInput } from '../components/ui/LocationInput'
@@ -934,6 +935,7 @@ function EditGroupModal({ group, onSave, onClose }: {
   onSave: (updated: Group) => void
   onClose: () => void
 }) {
+  const { role } = useAuth()
   const { categories } = useCategories()
   const [name, setName] = useState(group.name)
   const [description, setDescription] = useState(group.description)
@@ -951,9 +953,10 @@ function EditGroupModal({ group, onSave, onClose }: {
     if (!name.trim() || !description.trim()) return
     setSaving(true)
     try {
+      const actingAsModerator = role === 'admin' || role === 'moderator'
       const update = { name: name.trim(), description: description.trim(), category: category || undefined, location, socialLinks: links }
-      await updateGroup(group.id, update)
-      onSave({ ...group, ...update })
+      await updateGroup(group.id, group.moderationStatus, update, actingAsModerator)
+      onSave({ ...group, ...update, moderationStatus: nextEditStatus(group.moderationStatus, actingAsModerator) })
     } finally {
       setSaving(false)
     }
@@ -1003,6 +1006,7 @@ function EditResourceModal({ resource, onSave, onClose }: {
   onSave: (updated: Resource) => void
   onClose: () => void
 }) {
+  const { role } = useAuth()
   const [title, setTitle] = useState(resource.title)
   const [url, setUrl] = useState(resource.url ?? '')
   const [type, setType] = useState<Resource['type']>(resource.type)
@@ -1015,6 +1019,7 @@ function EditResourceModal({ resource, onSave, onClose }: {
     if (!title.trim()) return
     setSaving(true)
     try {
+      const actingAsModerator = role === 'admin' || role === 'moderator'
       const update = {
         title: title.trim(),
         url: url.trim() || undefined,
@@ -1022,8 +1027,8 @@ function EditResourceModal({ resource, onSave, onClose }: {
         typeOther: type === 'other' ? typeOther.trim() || undefined : undefined,
         description: description.trim() || undefined,
       }
-      await updateResource(resource.id, update)
-      onSave({ ...resource, ...update })
+      await updateResource(resource.id, resource.moderationStatus, update, actingAsModerator)
+      onSave({ ...resource, ...update, moderationStatus: nextEditStatus(resource.moderationStatus, actingAsModerator) })
     } finally {
       setSaving(false)
     }
@@ -1074,6 +1079,7 @@ function EditEventModal({ event, onSave, onClose }: {
   onSave: (updated: ImpetusEvent) => void
   onClose: () => void
 }) {
+  const { role } = useAuth()
   const [title, setTitle] = useState(event.title)
   const [externalUrl, setExternalUrl] = useState(event.externalUrl ?? '')
   const [date, setDate] = useState(toDatetimeLocalStr(event.date))
@@ -1088,6 +1094,7 @@ function EditEventModal({ event, onSave, onClose }: {
     if (!title.trim() || !date) return
     setSaving(true)
     try {
+      const actingAsModerator = role === 'admin' || role === 'moderator'
       const parsedDate = new Date(date)
       const parsedEndDate = endDate ? new Date(endDate) : undefined
       const update = {
@@ -1099,8 +1106,8 @@ function EditEventModal({ event, onSave, onClose }: {
         location: isVirtual ? undefined : location,
         description: description.trim() || undefined,
       }
-      await updateEvent(event.id, update)
-      onSave({ ...event, ...update })
+      await updateEvent(event.id, event.moderationStatus, update, actingAsModerator)
+      onSave({ ...event, ...update, moderationStatus: nextEditStatus(event.moderationStatus, actingAsModerator) })
     } finally {
       setSaving(false)
     }
@@ -1160,7 +1167,7 @@ function EditSubmissionModal({ submission, onSave, onClose }: {
     setSaving(true)
     try {
       const trimmedNote = note.trim() || null
-      await updateChallengeSubmission(submission.id, trimmedNote)
+      await updateChallengeSubmission(submission.id, { note: trimmedNote })
       onSave({ ...submission, note: trimmedNote ?? undefined })
     } finally {
       setSaving(false)

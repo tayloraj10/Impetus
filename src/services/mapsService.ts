@@ -1,12 +1,13 @@
 import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, serverTimestamp, increment,
+  doc, serverTimestamp, increment, deleteField,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
 import type { MapPin, CreateMapPinInput, ModerationStatus } from '../types'
 import { createFeedItem, deleteFeedItemByRefId } from './feedService'
 import { incrementTopicCount, decrementTopicCount } from './topicsService'
+import { assertEditable, nextEditStatus } from './moderationUtils'
 
 function toMapPin(id: string, data: any): MapPin {
   return {
@@ -147,4 +148,19 @@ export async function deleteMapPin(id: string, topicId: string): Promise<void> {
     deleteFeedItemByRefId(id),
     decrementTopicCount(topicId, 'mapPinCount'),
   ])
+}
+
+export async function updateMapPin(
+  id: string,
+  currentStatus: ModerationStatus,
+  update: Partial<Pick<MapPin, 'name' | 'description' | 'location' | 'url' | 'type' | 'coordinates'>>,
+  actingAsModerator: boolean,
+): Promise<void> {
+  assertEditable(currentStatus, actingAsModerator)
+  const firestoreUpdate: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(update)) {
+    firestoreUpdate[k] = v === undefined ? deleteField() : v
+  }
+  firestoreUpdate.moderationStatus = nextEditStatus(currentStatus, actingAsModerator)
+  await updateDoc(doc(db, 'map_pins', id), firestoreUpdate)
 }

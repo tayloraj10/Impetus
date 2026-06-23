@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { Group, CreateGroupInput, Topic } from '../../types'
-import { subscribeGroups, createGroup, likeGroup, unlikeGroup, flagGroup, unflagGroup, softDeleteGroup, deleteGroup } from '../../services/groupsService'
-import { uploadImage, groupLogoPath } from '../../services/storageService'
+import { subscribeGroups, createGroup, updateGroup, likeGroup, unlikeGroup, flagGroup, unflagGroup, softDeleteGroup, deleteGroup } from '../../services/groupsService'
+import { uploadImage, deleteImage, groupLogoPath } from '../../services/storageService'
 import { formatLocation } from '../../services/geocodeService'
 import { useAuth } from '../../hooks/useAuth'
 import { useLiked, useFlag } from '../../hooks/useLiked'
@@ -19,6 +19,7 @@ export function GroupsComponent({ topic }: { topic: Topic }) {
   const [groups, setGroups] = useState<Group[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<Group | null>(null)
   const [showSignInMsg, setShowSignInMsg] = useState(false)
   const { user, role } = useAuth()
 
@@ -52,7 +53,9 @@ export function GroupsComponent({ topic }: { topic: Topic }) {
         <EmptyState onAdd={handleAdd} />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
-          {groups.map(g => <GroupCard key={g.id} group={g} role={role} />)}
+          {groups.map(g => (
+            <GroupCard key={g.id} group={g} role={role} currentUserId={user?.uid} onEdit={() => setEditTarget(g)} />
+          ))}
         </div>
       )}
 
@@ -60,6 +63,12 @@ export function GroupsComponent({ topic }: { topic: Topic }) {
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         topic={topic}
+      />
+      <AddGroupModal
+        open={!!editTarget}
+        onClose={() => setEditTarget(null)}
+        topic={topic}
+        editTarget={editTarget ?? undefined}
       />
     </div>
   )
@@ -92,12 +101,13 @@ function ShieldCheck({ filled }: { filled: boolean }) {
   )
 }
 
-function GroupCard({ group, role }: { group: Group; role: string | null }) {
+function GroupCard({ group, role, currentUserId, onEdit }: { group: Group; role: string | null; currentUserId?: string; onEdit: () => void }) {
   const hasLinks = Object.values(group.socialLinks ?? {}).some(Boolean)
   const { liked, toggle, canLike } = useLiked(group.id, 'verified')
   const { flagged, flag, unflag, canFlag } = useFlag(group.id)
   const canModerate = role === 'admin' || role === 'moderator'
   const isAdmin = role === 'admin'
+  const canEdit = (currentUserId === group.submittedBy && group.moderationStatus !== 'removed') || canModerate
   const navigate = useNavigate()
 
   return (
@@ -123,6 +133,14 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
                   <span className="text-xs text-amber-500/80 font-medium">Under Review</span>
                 </Tooltip>
               )}
+              {canEdit && (
+                <button
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); onEdit() }}
+                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                >
+                  Edit
+                </button>
+              )}
               {canModerate && (
                 <span onClick={e => e.preventDefault()}>
                   <ModerateButtons
@@ -133,7 +151,7 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
               )}
               <Tooltip text={liked ? 'Remove confirmation' : canLike ? 'Confirm this group is active' : 'Sign in to confirm'}>
                 <button
-                  onClick={e => { e.preventDefault(); toggle(() => likeGroup(group.id), () => unlikeGroup(group.id)) }}
+                  onClick={e => { e.preventDefault(); e.stopPropagation(); toggle(() => likeGroup(group.id), () => unlikeGroup(group.id)) }}
                   className={`flex items-center gap-1 text-xs transition-colors select-none cursor-pointer ${
                     liked ? 'text-emerald-400' : canLike ? 'text-zinc-500 hover:text-emerald-400' : 'text-zinc-600 cursor-default'
                   }`}
@@ -152,7 +170,7 @@ function GroupCard({ group, role }: { group: Group; role: string | null }) {
               </span>
             </div>
           </div>
-          {group.location && (
+          {group.location && formatLocation(group.location) && (
             <p className="text-zinc-500 text-xs mt-0.5">
               {formatLocation(group.location)}
             </p>
@@ -212,9 +230,10 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   )
 }
 
-function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () => void; topic: Topic }) {
-  const { user } = useAuth()
+function AddGroupModal({ open, onClose, topic, editTarget }: { open: boolean; onClose: () => void; topic: Topic; editTarget?: Group }) {
+  const { user, role } = useAuth()
   const { categories } = useCategories()
+  const isEdit = !!editTarget
   const [form, setForm] = useState<CreateGroupInput>({
     topicId: topic.id,
     name: '',
@@ -226,9 +245,39 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imageCleared, setImageCleared] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    if (editTarget) {
+      setForm({
+        topicId: topic.id,
+        name: editTarget.name,
+        description: editTarget.description,
+        category: editTarget.category ?? '',
+        categoryOther: editTarget.categoryOther ?? '',
+        location: editTarget.location ?? { city: '', state: '', zipCode: '', country: '' },
+        socialLinks: { website: '', instagram: '', tiktok: '', youtube: '', facebook: '', twitter: '', ...editTarget.socialLinks },
+      })
+      setImagePreview(editTarget.imageUrl ?? null)
+    } else {
+      setForm({
+        topicId: topic.id,
+        name: '',
+        description: '',
+        category: '',
+        categoryOther: '',
+        location: { city: '', state: '', zipCode: '', country: '' },
+        socialLinks: { website: '', instagram: '', tiktok: '', youtube: '', facebook: '', twitter: '' },
+      })
+      setImagePreview(null)
+    }
+    setImageFile(null)
+    setImageCleared(false)
+  }, [open, editTarget, topic.id])
 
   function set(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }))
@@ -241,10 +290,12 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
     if (!file) return
     setImageFile(file)
     setImagePreview(URL.createObjectURL(file))
+    setImageCleared(false)
   }
   function clearImage() {
     setImageFile(null)
     setImagePreview(null)
+    setImageCleared(true)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -253,6 +304,21 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
     if (!user) return
     setSubmitting(true)
     try {
+      if (isEdit && editTarget) {
+        const actingAsModerator = role === 'admin' || role === 'moderator'
+        let imageUrl = editTarget.imageUrl ?? null
+        if (imageFile) {
+          if (editTarget.imageUrl) await deleteImage(editTarget.imageUrl).catch(() => {})
+          imageUrl = await uploadImage(imageFile, groupLogoPath(imageFile))
+        } else if (imageCleared && editTarget.imageUrl) {
+          await deleteImage(editTarget.imageUrl).catch(() => {})
+          imageUrl = null
+        }
+        const { topicId: _topicId, ...editFields } = form
+        await updateGroup(editTarget.id, editTarget.moderationStatus, { ...editFields, imageUrl }, actingAsModerator)
+        onClose()
+        return
+      }
       let imageUrl: string | undefined
       if (imageFile) {
         imageUrl = await uploadImage(imageFile, groupLogoPath(imageFile))
@@ -279,7 +345,7 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Add a Group">
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Group' : 'Add a Group'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label="Group Name *">
           <input required value={form.name} onChange={e => set('name', e.target.value)} placeholder="What's the group called?" />
@@ -367,7 +433,7 @@ function AddGroupModal({ open, onClose, topic }: { open: boolean; onClose: () =>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
           <Button type="submit" disabled={submitting}>
-            {submitting ? 'Submitting...' : 'Add Group'}
+            {submitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Add Group'}
           </Button>
         </div>
       </form>

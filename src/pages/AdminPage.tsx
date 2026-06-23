@@ -32,6 +32,7 @@ import {
   subscribeRemovedMapPins, restoreMapPin, deleteMapPin,
 } from '../services/mapsService'
 import { uploadImage, topicImagePath } from '../services/storageService'
+import { AddResourceModal } from '../components/topic-components/ResourcesComponent'
 import { seedAllTopics } from '../services/seedService'
 import { wipeContentCollections } from '../services/devService'
 import { Button } from '../components/ui/Button'
@@ -1223,6 +1224,7 @@ function ResourceModerationCard({ resource: r, topicName }: { resource: Resource
 
 function ResourceDetailModal({ resource: r, topicName, open, onClose }: { resource: Resource; topicName?: string; open: boolean; onClose: () => void }) {
   const [acting, setActing] = useState<'approve' | 'reject' | null>(null)
+  const [editing, setEditing] = useState(false)
 
   async function act(action: 'approve' | 'reject', reason?: string) {
     setActing(action)
@@ -1234,9 +1236,28 @@ function ResourceDetailModal({ resource: r, topicName, open, onClose }: { resour
     }
   }
 
+  if (editing) {
+    return (
+      <AddResourceModal
+        open={open}
+        onClose={() => { setEditing(false); onClose() }}
+        editTarget={r}
+      />
+    )
+  }
+
   return (
     <Modal open={open} onClose={onClose} title="Review Resource" size="lg">
       <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        <div className="flex items-center justify-between">
+          <p className="text-zinc-500 text-xs">Resource details</p>
+          <button
+            onClick={() => setEditing(true)}
+            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+          >
+            Edit
+          </button>
+        </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-zinc-500 text-xs mb-1">Title</p>

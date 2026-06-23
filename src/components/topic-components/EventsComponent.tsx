@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import type { ImpetusEvent, CreateEventInput, StructuredLocation, Topic } from '../../types'
 import { geocodeAddress, isGeocodeable, formatLocation } from '../../services/geocodeService'
 import {
-  subscribeEvents, createEvent,
+  subscribeEvents, createEvent, updateEvent,
   interestedEvent, uninterestedEvent,
   goingEvent, ungoingEvent,
   flagEvent, unflagEvent, softDeleteEvent, deleteEvent,
@@ -23,6 +23,7 @@ export function EventsComponent({ topic }: { topic: Topic }) {
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
   const [showSignInMsg, setShowSignInMsg] = useState(false)
+  const [editTarget, setEditTarget] = useState<ImpetusEvent | null>(null)
   const { user, role } = useAuth()
 
   useEffect(() => {
@@ -59,17 +60,18 @@ export function EventsComponent({ topic }: { topic: Topic }) {
         <EmptyState onAdd={handleAdd} />
       ) : (
         <div className="space-y-2">
-          {upcoming.map(e => <EventCard key={e.id} event={e} role={role} />)}
+          {upcoming.map(e => <EventCard key={e.id} event={e} role={role} currentUserId={user?.uid} onEdit={() => setEditTarget(e)} />)}
           {past.length > 0 && (
             <>
               <p className="text-zinc-600 text-xs pt-2 pb-1 uppercase tracking-wider">Past Events</p>
-              {past.map(e => <EventCard key={e.id} event={e} past role={role} />)}
+              {past.map(e => <EventCard key={e.id} event={e} past role={role} currentUserId={user?.uid} onEdit={() => setEditTarget(e)} />)}
             </>
           )}
         </div>
       )}
 
       <AddEventModal open={modalOpen} onClose={() => setModalOpen(false)} topic={topic} />
+      <AddEventModal open={!!editTarget} onClose={() => setEditTarget(null)} topic={topic} editTarget={editTarget ?? undefined} />
     </div>
   )
 }
@@ -91,12 +93,13 @@ function CheckCircleIcon({ filled }: { filled: boolean }) {
   )
 }
 
-function EventCard({ event, past = false, role }: { event: ImpetusEvent; past?: boolean; role: string | null }) {
+function EventCard({ event, past = false, role, currentUserId, onEdit }: { event: ImpetusEvent; past?: boolean; role: string | null; currentUserId?: string; onEdit: () => void }) {
   const interested = useLiked(event.id, 'interested')
   const going = useLiked(event.id, 'going')
   const { flagged, flag, unflag, canFlag } = useFlag(event.id)
   const canModerate = role === 'admin' || role === 'moderator'
   const isAdmin = role === 'admin'
+  const canEdit = (currentUserId === event.submittedBy && event.moderationStatus !== 'removed') || canModerate
 
   return (
     <div className={`border rounded-xl p-4 transition-colors ${
@@ -114,20 +117,28 @@ function EventCard({ event, past = false, role }: { event: ImpetusEvent; past?: 
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             {event.isVirtual && <Badge variant="blue" size="sm">Virtual</Badge>}
-            {event.location && <Badge variant="default" size="sm">{formatLocation(event.location)}</Badge>}
+            {event.location && formatLocation(event.location) && <Badge variant="default" size="sm">{formatLocation(event.location)}</Badge>}
             {event.moderationStatus === 'pending_review' && (
               <Tooltip text="This event is visible but awaiting moderator review">
                 <span className="text-xs text-amber-500/80 font-medium">Under Review</span>
               </Tooltip>
             )}
-            {canModerate && (
-              <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              {canEdit && (
+                <button
+                  onClick={e => { e.preventDefault(); onEdit() }}
+                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                >
+                  Edit
+                </button>
+              )}
+              {canModerate && (
                 <ModerateButtons
                   onSoftDelete={(uid, name, reason) => softDeleteEvent(event.id, uid, name, reason)}
                   onHardDelete={isAdmin ? () => deleteEvent(event.id, event.topicId) : undefined}
                 />
-              </div>
-            )}
+              )}
+            </div>
           </div>
           {event.externalUrl ? (
             <a
@@ -206,8 +217,14 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   )
 }
 
-function AddEventModal({ open, onClose, topic }: { open: boolean; onClose: () => void; topic: Topic }) {
-  const { user } = useAuth()
+function toDateInputValue(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function AddEventModal({ open, onClose, topic, editTarget }: { open: boolean; onClose: () => void; topic: Topic; editTarget?: ImpetusEvent }) {
+  const { user, role } = useAuth()
+  const isEdit = !!editTarget
   const [title, setTitle] = useState('')
   const [date, setDate] = useState('')
   const [endDate, setEndDate] = useState('')
@@ -227,6 +244,30 @@ function AddEventModal({ open, onClose, topic }: { open: boolean; onClose: () =>
     setManualLat(''); setManualLng(''); setShowManual(false)
     setGeocodeError(false); setDone(false)
   }
+
+  useEffect(() => {
+    if (!open) return
+    if (editTarget) {
+      setTitle(editTarget.title)
+      setDate(toDateInputValue(editTarget.date))
+      setEndDate(editTarget.endDate ? toDateInputValue(editTarget.endDate) : '')
+      setLocation(editTarget.location ?? {})
+      setIsVirtual(editTarget.isVirtual)
+      setUrl(editTarget.externalUrl ?? '')
+      setDescription(editTarget.description ?? '')
+      if (editTarget.coordinates) {
+        setManualLat(String(editTarget.coordinates.lat))
+        setManualLng(String(editTarget.coordinates.lng))
+        setShowManual(true)
+      } else {
+        setManualLat(''); setManualLng(''); setShowManual(false)
+      }
+      setGeocodeError(false)
+      setDone(false)
+    } else {
+      reset()
+    }
+  }, [open, editTarget])
 
   function handleClose() {
     onClose()
@@ -262,6 +303,22 @@ function AddEventModal({ open, onClose, topic }: { open: boolean; onClose: () =>
         }
       }
 
+      if (isEdit && editTarget) {
+        const actingAsModerator = role === 'admin' || role === 'moderator'
+        await updateEvent(editTarget.id, editTarget.moderationStatus, {
+          title,
+          date: new Date(date),
+          endDate: endDate ? new Date(endDate) : undefined,
+          location: !isVirtual && Object.keys(location).length ? location : undefined,
+          coordinates,
+          isVirtual,
+          externalUrl: url || undefined,
+          description: description || undefined,
+        }, actingAsModerator)
+        handleClose()
+        return
+      }
+
       const input: CreateEventInput = {
         topicId: topic.id,
         title,
@@ -295,7 +352,7 @@ function AddEventModal({ open, onClose, topic }: { open: boolean; onClose: () =>
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title="Add an Event">
+    <Modal open={open} onClose={handleClose} title={isEdit ? 'Edit Event' : 'Add an Event'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <label className="block">
           <span className="block text-xs text-zinc-400 mb-1">Event Name *</span>
@@ -389,7 +446,7 @@ function AddEventModal({ open, onClose, topic }: { open: boolean; onClose: () =>
         </label>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={handleClose}>Cancel</Button>
-          <Button type="submit" disabled={submitting}>{submitting ? 'Submitting...' : 'Submit Event'}</Button>
+          <Button type="submit" disabled={submitting}>{submitting ? 'Saving...' : isEdit ? 'Save Changes' : 'Submit Event'}</Button>
         </div>
       </form>
     </Modal>

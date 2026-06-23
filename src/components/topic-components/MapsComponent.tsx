@@ -7,7 +7,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import MarkerClusterGroup from 'react-leaflet-cluster'
 import type { MapPin, MapPinType, CreateMapPinInput, StructuredLocation, Topic } from '../../types'
 import {
-  subscribeMapPins, createMapPin,
+  subscribeMapPins, createMapPin, updateMapPin,
   likeMapPin, unlikeMapPin, flagMapPin, unflagMapPin,
   softDeleteMapPin, deleteMapPin,
 } from '../../services/mapsService'
@@ -98,6 +98,7 @@ export function MapsComponent({ topic }: { topic: Topic }) {
   const [pins, setPins] = useState<MapPin[]>([])
   const [loading, setLoading] = useState(true)
   const [addOpen, setAddOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<MapPin | null>(null)
   const [focusedId, setFocusedId] = useState<string | null>(null)
   const [flyTarget, setFlyTarget] = useState<[number, number] | null>(null)
   const { user, role } = useAuth()
@@ -172,7 +173,7 @@ export function MapsComponent({ topic }: { topic: Topic }) {
                         {pin.description && (
                           <p className="text-xs leading-relaxed mb-1.5 opacity-70">{pin.description}</p>
                         )}
-                        {pin.location && (
+                        {pin.location && formatLocation(pin.location) && (
                           <p className="text-xs opacity-50 mb-1">{formatLocation(pin.location)}</p>
                         )}
                         {pin.url && (
@@ -208,6 +209,8 @@ export function MapsComponent({ topic }: { topic: Topic }) {
                   active={focusedId === pin.id}
                   onFocus={() => handlePinFocus(pin)}
                   role={role}
+                  currentUserId={user?.uid}
+                  onEdit={() => setEditTarget(pin)}
                 />
               ))}
             </div>
@@ -216,21 +219,25 @@ export function MapsComponent({ topic }: { topic: Topic }) {
       )}
 
       <AddPinModal open={addOpen} onClose={() => setAddOpen(false)} topic={topic} />
+      <AddPinModal open={!!editTarget} onClose={() => setEditTarget(null)} topic={topic} editTarget={editTarget ?? undefined} />
     </div>
   )
 }
 
-function PinListItem({ pin, pinType, active, onFocus, role }: {
+function PinListItem({ pin, pinType, active, onFocus, role, currentUserId, onEdit }: {
   pin: MapPin
   pinType?: MapPinType
   active: boolean
   onFocus: () => void
   role: string | null
+  currentUserId?: string
+  onEdit: () => void
 }) {
   const { liked, toggle, canLike } = useLiked(pin.id, 'standard')
   const { flagged, flag, unflag, canFlag } = useFlag(pin.id)
   const canModerate = role === 'admin' || role === 'moderator'
   const isAdmin = role === 'admin'
+  const canEdit = (currentUserId === pin.submittedBy && pin.moderationStatus !== 'removed') || canModerate
 
   return (
     <button
@@ -261,6 +268,14 @@ function PinListItem({ pin, pinType, active, onFocus, role }: {
         </div>
 
         <div className="flex items-center gap-1 shrink-0 pt-0.5" onClick={e => e.stopPropagation()}>
+          {canEdit && (
+            <button
+              onClick={() => onEdit()}
+              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer px-1"
+            >
+              Edit
+            </button>
+          )}
           {canModerate && (
             <ModerateButtons
               onSoftDelete={(uid, name, reason) => softDeleteMapPin(pin.id, uid, name, reason)}
@@ -286,7 +301,7 @@ function PinListItem({ pin, pinType, active, onFocus, role }: {
           />
         </div>
       </div>
-      {pin.location && (
+      {pin.location && formatLocation(pin.location) && (
         <p className="text-zinc-500 text-xs leading-relaxed">{formatLocation(pin.location)}</p>
       )}
       {pin.description && (
@@ -335,8 +350,9 @@ function Field({ label, children }: { label: string; children: React.ReactElemen
   )
 }
 
-function AddPinModal({ open, onClose, topic }: { open: boolean; onClose: () => void; topic: Topic }) {
-  const { user } = useAuth()
+function AddPinModal({ open, onClose, topic, editTarget }: { open: boolean; onClose: () => void; topic: Topic; editTarget?: MapPin }) {
+  const { user, role } = useAuth()
+  const isEdit = !!editTarget
   const [name, setName] = useState('')
   const [type, setType] = useState('')
   const [description, setDescription] = useState('')
@@ -354,6 +370,24 @@ function AddPinModal({ open, onClose, topic }: { open: boolean; onClose: () => v
     setManualLat(''); setManualLng(''); setShowManual(false)
     setGeocodeError(false); setDone(false)
   }
+
+  useEffect(() => {
+    if (!open) return
+    if (editTarget) {
+      setName(editTarget.name)
+      setType(editTarget.type ?? '')
+      setDescription(editTarget.description ?? '')
+      setLocation(editTarget.location ?? {})
+      setUrl(editTarget.url ?? '')
+      setManualLat(String(editTarget.coordinates.lat))
+      setManualLng(String(editTarget.coordinates.lng))
+      setShowManual(true)
+      setGeocodeError(false)
+      setDone(false)
+    } else {
+      reset()
+    }
+  }, [open, editTarget])
 
   function handleClose() {
     onClose()
@@ -384,6 +418,20 @@ function AddPinModal({ open, onClose, topic }: { open: boolean; onClose: () => v
           setShowManual(true)
           return
         }
+      }
+
+      if (isEdit && editTarget) {
+        const actingAsModerator = role === 'admin' || role === 'moderator'
+        await updateMapPin(editTarget.id, editTarget.moderationStatus, {
+          name,
+          description: description || undefined,
+          location: Object.keys(location).length ? location : undefined,
+          url: url || undefined,
+          type: type || undefined,
+          coordinates,
+        }, actingAsModerator)
+        handleClose()
+        return
       }
 
       const input: CreateMapPinInput = {
@@ -422,7 +470,7 @@ function AddPinModal({ open, onClose, topic }: { open: boolean; onClose: () => v
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title="Add a Map Pin">
+    <Modal open={open} onClose={handleClose} title={isEdit ? 'Edit Map Pin' : 'Add a Map Pin'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label="Name *">
           <input required value={name} onChange={e => setName(e.target.value)} placeholder="What is this location?" />
@@ -515,7 +563,7 @@ function AddPinModal({ open, onClose, topic }: { open: boolean; onClose: () => v
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="secondary" onClick={handleClose}>Cancel</Button>
           <Button type="submit" disabled={submitting}>
-            {submitting ? 'Locating…' : 'Add Pin'}
+            {submitting ? 'Locating…' : isEdit ? 'Save Changes' : 'Add Pin'}
           </Button>
         </div>
       </form>

@@ -1,12 +1,13 @@
 import {
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, serverTimestamp, increment, Timestamp,
+  doc, serverTimestamp, increment, Timestamp, deleteField,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
-import type { ImpetusEvent, CreateEventInput } from '../types'
+import type { ImpetusEvent, CreateEventInput, ModerationStatus } from '../types'
 import { createFeedItem, deleteFeedItemByRefId } from './feedService'
 import { incrementTopicCount, decrementTopicCount } from './topicsService'
+import { assertEditable, nextEditStatus } from './moderationUtils'
 
 function toEvent(id: string, data: any): ImpetusEvent {
   return {
@@ -173,11 +174,18 @@ export async function deleteEvent(id: string, topicId: string): Promise<void> {
 
 export async function updateEvent(
   id: string,
-  update: Partial<Pick<ImpetusEvent, 'title' | 'description' | 'externalUrl' | 'isVirtual' | 'location' | 'date' | 'endDate'>>,
+  currentStatus: ModerationStatus,
+  update: Partial<Pick<ImpetusEvent, 'title' | 'description' | 'externalUrl' | 'isVirtual' | 'location' | 'coordinates' | 'date' | 'endDate'>>,
+  actingAsModerator: boolean,
 ): Promise<void> {
+  assertEditable(currentStatus, actingAsModerator)
   const { date, endDate, ...rest } = update
-  const firestoreUpdate: Record<string, unknown> = { ...rest }
+  const firestoreUpdate: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(rest)) {
+    firestoreUpdate[k] = v === undefined ? deleteField() : v
+  }
   if (date) firestoreUpdate.date = Timestamp.fromDate(date)
   if (endDate !== undefined) firestoreUpdate.endDate = endDate ? Timestamp.fromDate(endDate) : null
+  firestoreUpdate.moderationStatus = nextEditStatus(currentStatus, actingAsModerator)
   await updateDoc(doc(db, 'events', id), firestoreUpdate)
 }

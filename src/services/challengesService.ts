@@ -1,6 +1,6 @@
 import {
   collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, serverTimestamp, increment, limit,
+  doc, serverTimestamp, increment, limit, Timestamp,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
@@ -167,6 +167,19 @@ export async function deleteChallengeSubmission(submissionId: string, challengeI
   ])
 }
 
-export async function updateChallengeSubmission(submissionId: string, note: string | null): Promise<void> {
-  await updateDoc(doc(db, 'challenge_submissions', submissionId), { note })
+export async function updateChallengeSubmission(
+  submissionId: string,
+  update: { note?: string | null; proofImageUrl?: string | null },
+): Promise<void> {
+  await updateDoc(doc(db, 'challenge_submissions', submissionId), { ...update })
+}
+
+export async function updateChallenge(
+  id: string,
+  update: Partial<Pick<Challenge, 'title' | 'description' | 'actionPrompt' | 'deadline'>>,
+): Promise<void> {
+  const { deadline, ...rest } = update
+  const firestoreUpdate: Record<string, unknown> = { ...rest }
+  if (deadline !== undefined) firestoreUpdate.deadline = deadline ? Timestamp.fromDate(deadline) : null
+  await updateDoc(doc(db, 'challenges', id), firestoreUpdate)
 }

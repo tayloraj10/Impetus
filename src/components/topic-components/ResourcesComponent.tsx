@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import type { Resource, CreateResourceInput, StructuredLocation, Topic } from '../../types'
 import { formatLocation } from '../../services/geocodeService'
 import {
-  subscribeResources, createResource,
+  subscribeResources, createResource, updateResource,
   likeResource, unlikeResource,
   notHelpfulResource, unNotHelpfulResource,
   flagResource, unflagResource, softDeleteResource, deleteResource,
@@ -43,6 +43,7 @@ export function ResourcesComponent({ topic }: { topic: Topic }) {
   const [resources, setResources] = useState<Resource[]>([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
+  const [editTarget, setEditTarget] = useState<Resource | null>(null)
   const [showSignInMsg, setShowSignInMsg] = useState(false)
   const { user, role } = useAuth()
 
@@ -76,11 +77,14 @@ export function ResourcesComponent({ topic }: { topic: Topic }) {
         <EmptyState onAdd={handleAdd} />
       ) : (
         <div className="space-y-2">
-          {resources.map(r => <ResourceRow key={r.id} resource={r} role={role} />)}
+          {resources.map(r => (
+            <ResourceRow key={r.id} resource={r} role={role} currentUserId={user?.uid} onEdit={() => setEditTarget(r)} />
+          ))}
         </div>
       )}
 
       <AddResourceModal open={modalOpen} onClose={() => setModalOpen(false)} topic={topic} />
+      <AddResourceModal open={!!editTarget} onClose={() => setEditTarget(null)} topic={topic} editTarget={editTarget ?? undefined} />
     </div>
   )
 }
@@ -101,12 +105,13 @@ function ThumbsDown({ filled }: { filled: boolean }) {
   )
 }
 
-function ResourceRow({ resource, role }: { resource: Resource; role: string | null }) {
+function ResourceRow({ resource, role, currentUserId, onEdit }: { resource: Resource; role: string | null; currentUserId?: string; onEdit: () => void }) {
   const helpful = useLiked(resource.id, 'helpful')
   const notHelpful = useLiked(resource.id, 'nothelpful')
   const { flagged, flag, unflag, canFlag } = useFlag(resource.id)
   const canModerate = role === 'admin' || role === 'moderator'
   const isAdmin = role === 'admin'
+  const canEdit = (currentUserId === resource.submittedBy && resource.moderationStatus !== 'removed') || canModerate
 
   return (
     <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition-colors">
@@ -114,12 +119,27 @@ function ResourceRow({ resource, role }: { resource: Resource; role: string | nu
         <Badge variant={typeColors[resource.type]}>
           {resource.type === 'other' && resource.typeOther ? resource.typeOther : typeLabels[resource.type]}
         </Badge>
-        {canModerate && (
-          <div className="ml-auto">
-            <ModerateButtons
-              onSoftDelete={(uid, name, reason) => softDeleteResource(resource.id, uid, name, reason)}
-              onHardDelete={isAdmin ? () => deleteResource(resource.id, resource.topicId) : undefined}
-            />
+        {resource.moderationStatus === 'pending_review' && (
+          <Tooltip text="This resource is visible but awaiting moderator review">
+            <span className="text-xs text-amber-500/80 font-medium">Under Review</span>
+          </Tooltip>
+        )}
+        {(canEdit || canModerate) && (
+          <div className="ml-auto flex items-center gap-2">
+            {canEdit && (
+              <button
+                onClick={e => { e.preventDefault(); onEdit() }}
+                className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+              >
+                Edit
+              </button>
+            )}
+            {canModerate && (
+              <ModerateButtons
+                onSoftDelete={(uid, name, reason) => softDeleteResource(resource.id, uid, name, reason)}
+                onHardDelete={isAdmin ? () => deleteResource(resource.id, resource.topicId) : undefined}
+              />
+            )}
           </div>
         )}
       </div>
@@ -139,7 +159,7 @@ function ResourceRow({ resource, role }: { resource: Resource; role: string | nu
       {resource.description && (
         <p className="text-zinc-400 text-sm mt-1 leading-relaxed">{resource.description}</p>
       )}
-      {resource.location && (
+      {resource.location && formatLocation(resource.location) && (
         <p className="text-zinc-500 text-xs mt-1">📍 {formatLocation(resource.location)}</p>
       )}
       {resource.submittedByDisplayName && (
@@ -203,12 +223,13 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 
 const BASE_TYPE_KEYS = ['article', 'video', 'government', 'tool', 'guide', 'content_creator'] as const
 
-function AddResourceModal({ open, onClose, topic }: { open: boolean; onClose: () => void; topic: Topic }) {
-  const { user } = useAuth()
+export function AddResourceModal({ open, onClose, topic, editTarget }: { open: boolean; onClose: () => void; topic?: Topic; editTarget?: Resource }) {
+  const { user, role } = useAuth()
   const { categories } = useCategories('resource_type')
   const approvedLabels = categories.filter(c => (c.status ?? 'approved') === 'approved').map(c => c.label)
+  const isEdit = !!editTarget
   const [form, setForm] = useState<CreateResourceInput>({
-    topicId: topic.id,
+    topicId: topic?.id ?? '',
     title: '',
     url: '',
     type: 'article',
@@ -217,6 +238,30 @@ function AddResourceModal({ open, onClose, topic }: { open: boolean; onClose: ()
   })
   const [submitting, setSubmitting] = useState(false)
   const [done, setDone] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    if (editTarget) {
+      setForm({
+        topicId: editTarget.topicId,
+        title: editTarget.title,
+        url: editTarget.url ?? '',
+        type: editTarget.type,
+        typeOther: editTarget.typeOther,
+        location: editTarget.location ?? {},
+        description: editTarget.description ?? '',
+      })
+    } else {
+      setForm({
+        topicId: topic?.id ?? '',
+        title: '',
+        url: '',
+        type: 'article',
+        location: {},
+        description: '',
+      })
+    }
+  }, [open, editTarget, topic?.id])
 
   function set<K extends keyof CreateResourceInput>(field: K, value: CreateResourceInput[K]) {
     setForm(f => ({ ...f, [field]: value }))
@@ -227,6 +272,14 @@ function AddResourceModal({ open, onClose, topic }: { open: boolean; onClose: ()
     if (!user) return
     setSubmitting(true)
     try {
+      if (isEdit && editTarget) {
+        const actingAsModerator = role === 'admin' || role === 'moderator'
+        const { topicId: _topicId, ...editFields } = form
+        await updateResource(editTarget.id, editTarget.moderationStatus, editFields, actingAsModerator)
+        onClose()
+        return
+      }
+      if (!topic) return
       await createResource(form, user.uid, user.displayName ?? 'Anonymous', topic.title, topic.slug)
       setDone(true)
     } finally {
@@ -247,7 +300,7 @@ function AddResourceModal({ open, onClose, topic }: { open: boolean; onClose: ()
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Add a Resource">
+    <Modal open={open} onClose={onClose} title={isEdit ? 'Edit Resource' : 'Add a Resource'}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <label className="block">
           <span className="block text-xs text-zinc-400 mb-1">Title *</span>

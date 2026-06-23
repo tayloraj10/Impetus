@@ -1,13 +1,14 @@
 import {
-  collection, query, where, orderBy, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, serverTimestamp, increment,
+  collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
+  doc, serverTimestamp, increment, deleteField,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
-import type { Resource, CreateResourceInput } from '../types'
+import type { Resource, CreateResourceInput, ModerationStatus } from '../types'
 import { createFeedItem, deleteFeedItemByRefId } from './feedService'
 import { incrementTopicCount, decrementTopicCount } from './topicsService'
 import { geocodeAddress, isGeocodeable } from './geocodeService'
+import { assertEditable, nextEditStatus } from './moderationUtils'
 
 function toResource(id: string, data: any): Resource {
   return {
@@ -24,11 +25,12 @@ export function subscribeResources(topicId: string, callback: (resources: Resour
   const q = query(
     collection(db, 'resources'),
     where('topicId', '==', topicId),
-    where('moderationStatus', '==', 'live'),
-    orderBy('likes', 'desc'),
+    where('moderationStatus', 'in', ['live', 'pending_review']),
   )
   return onSnapshot(q, (snap) => {
-    callback(snap.docs.map(d => toResource(d.id, d.data())))
+    const resources = snap.docs.map(d => toResource(d.id, d.data()))
+    resources.sort((a, b) => b.likes - a.likes)
+    callback(resources)
   })
 }
 
@@ -171,7 +173,22 @@ export async function deleteResource(id: string, topicId: string): Promise<void>
 
 export async function updateResource(
   id: string,
-  update: Partial<Pick<Resource, 'title' | 'url' | 'type' | 'typeOther' | 'description'>>,
+  currentStatus: ModerationStatus,
+  update: Partial<Pick<Resource, 'title' | 'url' | 'type' | 'typeOther' | 'location' | 'description'>>,
+  actingAsModerator: boolean,
 ): Promise<void> {
-  await updateDoc(doc(db, 'resources', id), update)
+  assertEditable(currentStatus, actingAsModerator)
+  const { location, ...rest } = update
+  const firestoreUpdate: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(rest)) {
+    firestoreUpdate[k] = v === undefined ? deleteField() : v
+  }
+  if (location !== undefined) {
+    const canGeocode = location && isGeocodeable(location)
+    const geocoded = canGeocode ? await geocodeAddress(location) : null
+    firestoreUpdate.location = location
+    firestoreUpdate.coordinates = geocoded ? { lat: geocoded.lat, lng: geocoded.lng } : null
+  }
+  firestoreUpdate.moderationStatus = nextEditStatus(currentStatus, actingAsModerator)
+  await updateDoc(doc(db, 'resources', id), firestoreUpdate)
 }

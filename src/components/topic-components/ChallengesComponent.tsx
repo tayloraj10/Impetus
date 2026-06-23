@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useState } from 'react'
 import type { Challenge, ChallengeSubmission, Topic } from '../../types'
 import {
   subscribeChallenges, subscribeChallengeSubmissions,
-  createChallenge, submitChallengeAction,
+  createChallenge, updateChallenge, submitChallengeAction, updateChallengeSubmission,
   upvoteChallenge, unupvoteChallenge, flagChallenge, unflagChallenge, softDeleteChallenge, deleteChallenge,
 } from '../../services/challengesService'
+import { uploadImage, deleteImage, submissionImagePath } from '../../services/storageService'
 import { useAuth } from '../../hooks/useAuth'
 import { useLiked, useFlag } from '../../hooks/useLiked'
 import { Badge } from '../ui/Badge'
@@ -82,6 +83,7 @@ function ChevronDown({ open }: { open: boolean }) {
 function ChallengeCard({ challenge, ended = false, role }: { challenge: Challenge; ended?: boolean; role: string | null }) {
   const [actionOpen, setActionOpen] = useState(false)
   const [submissionsOpen, setSubmissionsOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [showSignInMsg, setShowSignInMsg] = useState(false)
   const { user } = useAuth()
   const { liked, toggle, canLike } = useLiked(challenge.id, 'upvoted')
@@ -97,7 +99,13 @@ function ChallengeCard({ challenge, ended = false, role }: { challenge: Challeng
             <Badge variant={ended ? 'default' : 'purple'}>{ended ? 'Ended' : 'Active'}</Badge>
             {challenge.type === 'group_competition' && <Badge variant="amber">Competition</Badge>}
             {canModerate && (
-              <div className="ml-auto">
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() => setEditOpen(true)}
+                  className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                >
+                  Edit
+                </button>
                 <ModerateButtons
                   onSoftDelete={(uid, name, reason) => softDeleteChallenge(challenge.id, uid, name, reason)}
                   onHardDelete={isAdmin ? () => deleteChallenge(challenge.id, challenge.topicId) : undefined}
@@ -173,7 +181,62 @@ function ChallengeCard({ challenge, ended = false, role }: { challenge: Challeng
         challenge={challenge}
         onSubmitted={() => setSubmissionsOpen(true)}
       />
+      <EditChallengeModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        challenge={challenge}
+      />
     </div>
+  )
+}
+
+function EditChallengeModal({ open, onClose, challenge }: { open: boolean; onClose: () => void; challenge: Challenge }) {
+  const [title, setTitle] = useState('')
+  const [description, setDescription] = useState('')
+  const [actionPrompt, setActionPrompt] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    setTitle(challenge.title)
+    setDescription(challenge.description)
+    setActionPrompt(challenge.actionPrompt)
+  }, [open, challenge])
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSubmitting(true)
+    try {
+      await updateChallenge(challenge.id, { title: title.trim(), description: description.trim(), actionPrompt: actionPrompt.trim() })
+      onClose()
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const inputClass = 'w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors'
+
+  return (
+    <Modal open={open} onClose={onClose} title="Edit Challenge">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block">
+          <span className="block text-xs text-zinc-400 mb-1">Title *</span>
+          <input required value={title} onChange={e => setTitle(e.target.value)} className={inputClass} />
+        </label>
+        <label className="block">
+          <span className="block text-xs text-zinc-400 mb-1">Description *</span>
+          <textarea required rows={2} value={description} onChange={e => setDescription(e.target.value)} className={`${inputClass} resize-none`} />
+        </label>
+        <label className="block">
+          <span className="block text-xs text-zinc-400 mb-1">Action Prompt *</span>
+          <input required value={actionPrompt} onChange={e => setActionPrompt(e.target.value)} className={inputClass} />
+        </label>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={submitting}>{submitting ? 'Saving...' : 'Save Changes'}</Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
@@ -205,6 +268,9 @@ function SubmissionsPanel({ challengeId }: { challengeId: string }) {
 }
 
 function SubmissionItem({ submission }: { submission: ChallengeSubmission }) {
+  const [editOpen, setEditOpen] = useState(false)
+  const { user } = useAuth()
+  const isOwner = user?.uid === submission.userId
   const initials = submission.userDisplayName
     .split(' ')
     .filter(Boolean)
@@ -222,6 +288,14 @@ function SubmissionItem({ submission }: { submission: ChallengeSubmission }) {
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-zinc-200 text-sm font-medium">{submission.userDisplayName}</span>
           <span className="text-zinc-600 text-xs">{formatTimeAgo(submission.createdAt)}</span>
+          {isOwner && (
+            <button
+              onClick={() => setEditOpen(true)}
+              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer ml-auto"
+            >
+              Edit
+            </button>
+          )}
         </div>
         {submission.note && (
           <p className="text-zinc-400 text-sm mt-1 leading-snug">{submission.note}</p>
@@ -241,7 +315,132 @@ function SubmissionItem({ submission }: { submission: ChallengeSubmission }) {
           </a>
         )}
       </div>
+      {isOwner && (
+        <EditSubmissionModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          submission={submission}
+        />
+      )}
     </div>
+  )
+}
+
+function EditSubmissionModal({ open, onClose, submission }: { open: boolean; onClose: () => void; submission: ChallengeSubmission }) {
+  const [note, setNote] = useState('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imageCleared, setImageCleared] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    setNote(submission.note ?? '')
+    setImageFile(null)
+    setImagePreview(submission.proofImageUrl ?? null)
+    setImageCleared(false)
+    setImageError(null)
+  }, [open, submission])
+
+  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 10 * 1024 * 1024) {
+      setImageError('Image must be under 10 MB')
+      return
+    }
+    setImageError(null)
+    setImageFile(file)
+    setImageCleared(false)
+    setImagePreview(URL.createObjectURL(file))
+  }
+
+  function clearImage() {
+    setImageFile(null)
+    setImagePreview(null)
+    setImageCleared(true)
+    setImageError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setSubmitting(true)
+    try {
+      let proofImageUrl: string | null = submission.proofImageUrl ?? null
+      if (imageFile) {
+        if (submission.proofImageUrl) await deleteImage(submission.proofImageUrl).catch(() => {})
+        proofImageUrl = await uploadImage(imageFile, submissionImagePath(submission.challengeId, submission.userId, imageFile))
+      } else if (imageCleared && submission.proofImageUrl) {
+        await deleteImage(submission.proofImageUrl).catch(() => {})
+        proofImageUrl = null
+      }
+      await updateChallengeSubmission(submission.id, { note: note.trim() || null, proofImageUrl })
+      onClose()
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Edit Your Submission">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <label className="block">
+          <span className="block text-xs text-zinc-400 mb-1">What did you do? (optional)</span>
+          <textarea
+            rows={3}
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="Share your experience..."
+            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-colors resize-none"
+          />
+        </label>
+
+        <div>
+          <span className="block text-xs text-zinc-400 mb-1">Proof photo (optional)</span>
+          {imagePreview ? (
+            <div className="relative w-fit">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="rounded-lg max-h-48 max-w-full object-cover border border-zinc-700"
+              />
+              <button
+                type="button"
+                onClick={clearImage}
+                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-zinc-900/90 text-zinc-300 hover:text-white flex items-center justify-center text-xs border border-zinc-700"
+              >
+                ✕
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-zinc-700 rounded-lg cursor-pointer hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-colors">
+              <svg className="w-5 h-5 text-zinc-500 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+              <span className="text-xs text-zinc-500">Click to upload image</span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageChange}
+              />
+            </label>
+          )}
+          {imageError && <p className="text-red-400 text-xs mt-1">{imageError}</p>}
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="secondary" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? (imageFile ? 'Uploading...' : 'Saving...') : 'Save Changes'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 

@@ -1,13 +1,14 @@
 import {
   collection, query, where, onSnapshot, addDoc, updateDoc, deleteDoc,
-  doc, getDoc, serverTimestamp, increment,
+  doc, getDoc, serverTimestamp, increment, deleteField,
   type Unsubscribe,
 } from 'firebase/firestore'
 import { db } from '../config/firebase'
-import type { Group, CreateGroupInput } from '../types'
+import type { Group, CreateGroupInput, ModerationStatus } from '../types'
 import { createFeedItem, deleteFeedItemByRefId } from './feedService'
 import { incrementTopicCount, decrementTopicCount } from './topicsService'
 import { geocodeAddress, isGeocodeable } from './geocodeService'
+import { assertEditable, nextEditStatus } from './moderationUtils'
 
 function toGroup(id: string, data: any): Group {
   return {
@@ -185,7 +186,23 @@ export async function deleteGroup(id: string, topicId: string): Promise<void> {
 
 export async function updateGroup(
   id: string,
-  update: Partial<Pick<Group, 'name' | 'description' | 'location' | 'socialLinks'>>,
+  currentStatus: ModerationStatus,
+  update: Partial<Pick<Group, 'name' | 'description' | 'category' | 'categoryOther' | 'location' | 'socialLinks'>> & { imageUrl?: string | null },
+  actingAsModerator: boolean,
 ): Promise<void> {
-  await updateDoc(doc(db, 'groups', id), { ...update, updatedAt: serverTimestamp() })
+  assertEditable(currentStatus, actingAsModerator)
+  const { location, ...rest } = update
+  const firestoreUpdate: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(rest)) {
+    firestoreUpdate[k] = v === undefined ? deleteField() : v
+  }
+  if (location !== undefined) {
+    const canGeocode = location && isGeocodeable(location)
+    const geocoded = canGeocode ? await geocodeAddress(location) : null
+    firestoreUpdate.location = location
+    firestoreUpdate.coordinates = geocoded ? { latitude: geocoded.lat, longitude: geocoded.lng } : null
+  }
+  firestoreUpdate.moderationStatus = nextEditStatus(currentStatus, actingAsModerator)
+  firestoreUpdate.updatedAt = serverTimestamp()
+  await updateDoc(doc(db, 'groups', id), firestoreUpdate)
 }
