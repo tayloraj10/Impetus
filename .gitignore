@@ -26,6 +26,9 @@ dist-ssr
 # Claude Code local settings
 .claude/settings.local.json
 
+# Firebase CLI local cache (created by firebase deploy)
+.firebase/
+
 # Local data exports / service account keys
 scripts/_export/
 *.serviceaccount.json
