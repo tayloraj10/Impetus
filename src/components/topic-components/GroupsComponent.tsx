@@ -230,7 +230,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
   )
 }
 
-function AddGroupModal({ open, onClose, topic, editTarget }: { open: boolean; onClose: () => void; topic: Topic; editTarget?: Group }) {
+export function AddGroupModal({ open, onClose, topic, editTarget }: { open: boolean; onClose: () => void; topic: Topic; editTarget?: Group }) {
   const { user, role } = useAuth()
   const { categories } = useCategories()
   const isEdit = !!editTarget

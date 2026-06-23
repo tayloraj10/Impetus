@@ -3,12 +3,13 @@ import { useParams, Link } from 'react-router-dom'
 import { getGroup, likeGroup, unlikeGroup, flagGroup, unflagGroup } from '../services/groupsService'
 import { formatLocation } from '../services/geocodeService'
 import { useTopics } from '../hooks/useTopics'
+import { useAuth } from '../hooks/useAuth'
 import { useLiked, useFlag } from '../hooks/useLiked'
-import { GroupLogo } from '../components/topic-components/GroupsComponent'
+import { GroupLogo, AddGroupModal } from '../components/topic-components/GroupsComponent'
 import { FlagButton } from '../components/ui/FlagButton'
 import { Tooltip } from '../components/ui/Tooltip'
 import { Spinner } from '../components/ui/Spinner'
-import type { Group } from '../types'
+import type { Group, Topic } from '../types'
 
 function ShieldCheck({ filled }: { filled: boolean }) {
   return (
@@ -47,11 +48,9 @@ function SocialLinkButton({ href, label, icon }: { href: string; label: string; 
   )
 }
 
-function GroupDetails({ group }: { group: Group }) {
+function GroupDetails({ group, topic, canEdit, onEdit }: { group: Group; topic: Topic | null; canEdit: boolean; onEdit: () => void }) {
   const { liked, toggle, canLike } = useLiked(group.id, 'verified')
   const { flagged, flag, unflag, canFlag } = useFlag(group.id)
-  const { topics } = useTopics()
-  const topic = topics.find(t => t.id === group.topicId) ?? null
 
   const locationStr = group.location ? formatLocation(group.location) : null
 
@@ -72,6 +71,14 @@ function GroupDetails({ group }: { group: Group }) {
             <div className="flex items-start justify-between gap-3">
               <h1 className="text-xl font-bold text-zinc-100 leading-tight">{group.name}</h1>
               <div className="flex items-center gap-2 shrink-0">
+                {canEdit && (
+                  <button
+                    onClick={onEdit}
+                    className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors cursor-pointer"
+                  >
+                    Edit
+                  </button>
+                )}
                 <Tooltip text={liked ? 'Remove confirmation' : canLike ? 'Confirm this group is active' : 'Sign in to confirm'}>
                   <button
                     onClick={() => toggle(() => likeGroup(group.id), () => unlikeGroup(group.id))}
@@ -185,6 +192,9 @@ function GroupDetails({ group }: { group: Group }) {
 export function GroupPage() {
   const { id } = useParams<{ id: string }>()
   const [group, setGroup] = useState<Group | null | 'loading'>('loading')
+  const [editOpen, setEditOpen] = useState(false)
+  const { topics } = useTopics()
+  const { user, role } = useAuth()
 
   useEffect(() => {
     if (!id) { setGroup(null); return }
@@ -206,5 +216,24 @@ export function GroupPage() {
     )
   }
 
-  return <GroupDetails group={group} />
+  const topic = topics.find(t => t.id === group.topicId) ?? null
+  const canModerate = role === 'admin' || role === 'moderator'
+  const canEdit = (user?.uid === group.submittedBy && group.moderationStatus !== 'removed') || canModerate
+
+  return (
+    <>
+      <GroupDetails group={group} topic={topic} canEdit={canEdit} onEdit={() => setEditOpen(true)} />
+      {topic && (
+        <AddGroupModal
+          open={editOpen}
+          onClose={() => {
+            setEditOpen(false)
+            if (id) getGroup(id).then(setGroup)
+          }}
+          topic={topic}
+          editTarget={group}
+        />
+      )}
+    </>
+  )
 }
