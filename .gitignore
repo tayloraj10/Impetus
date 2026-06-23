@@ -25,3 +25,8 @@ dist-ssr
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Local data exports / service account keys
+scripts/_export/
+*.serviceaccount.json
+serviceAccountKey.json

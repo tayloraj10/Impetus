@@ -282,9 +282,11 @@ export interface Definition {
   categoryOther?: string
   relatedTerms: string[]
   createdBy: string
+  createdByDisplayName?: string
   createdAt: Date
   updatedAt: Date
-  status: 'live' | 'archived'
+  status: 'live' | 'pending_approval' | 'archived' | 'rejected'
+  moderationReason?: string
   ratingSum: number
   ratingCount: number
 }
@@ -298,4 +300,5 @@ export interface CreateDefinitionInput {
   categoryOther?: string
   relatedTerms?: string[]
   createdBy: string
+  createdByDisplayName?: string
 }

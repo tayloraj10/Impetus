@@ -1,6 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, type FormEvent } from 'react'
 import { useAuth } from '../hooks/useAuth'
-import { subscribeDefinitions, subscribeUserRatings, rateDefinition } from '../services/definitionsService'
+import { useCategories } from '../hooks/useGroupCategories'
+import {
+  subscribeDefinitions, subscribeUserRatings, rateDefinition, suggestDefinition,
+} from '../services/definitionsService'
+import { Modal } from '../components/ui/Modal'
+import { Button } from '../components/ui/Button'
 import type { Definition, DefinitionCategory } from '../types'
 
 const CATEGORIES: { key: DefinitionCategory | 'all'; label: string; color: string }[] = [
@@ -27,6 +32,7 @@ export function DefinitionsPage() {
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<DefinitionCategory | 'all'>('all')
   const [sort, setSort] = useState<'alpha' | 'rating'>('alpha')
+  const [suggestOpen, setSuggestOpen] = useState(false)
 
   useEffect(() => subscribeDefinitions(setDefinitions), [])
 
@@ -76,13 +82,33 @@ export function DefinitionsPage() {
     }
   }
 
+  function handleRandom() {
+    if (definitions.length === 0) return
+    const pick = definitions[Math.floor(Math.random() * definitions.length)]
+    setCategoryFilter('all')
+    setSort('alpha')
+    setSearch(pick.term)
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-zinc-100 mb-1">Definitions</h1>
-        <p className="text-zinc-500 text-sm">
-          Common political and economic terms. You can rate each definition's accuracy.
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <h1 className="text-2xl font-bold text-zinc-100 mb-1">
+            Definitions <span className="text-zinc-500 font-normal text-lg">({definitions.length})</span>
+          </h1>
+          <p className="text-zinc-500 text-sm">
+            Common political and economic terms. You can rate each definition's accuracy or use for reference.
+          </p>
+        </div>
+        {user && (
+          <button
+            onClick={() => setSuggestOpen(true)}
+            className="text-xs px-3 py-1.5 rounded-lg border border-zinc-700 text-zinc-300 hover:border-emerald-600 hover:text-emerald-400 transition-colors cursor-pointer shrink-0"
+          >
+            + Suggest a Definition
+          </button>
+        )}
       </div>
 
       {/* Search + sort */}
@@ -102,6 +128,14 @@ export function DefinitionsPage() {
             className="w-full bg-zinc-900 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500 rounded-lg pl-8 pr-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none transition-colors"
           />
         </div>
+        <button
+          onClick={handleRandom}
+          disabled={definitions.length === 0}
+          title="Show a random definition"
+          className="px-3 py-2 rounded-lg border border-zinc-800 text-xs font-medium text-zinc-400 hover:border-zinc-600 hover:text-zinc-200 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+        >
+          🎲 Random
+        </button>
         <div className="flex rounded-lg border border-zinc-800 overflow-hidden text-xs font-medium">
           <button
             onClick={() => setSort('alpha')}
@@ -124,11 +158,10 @@ export function DefinitionsPage() {
           <button
             key={key}
             onClick={() => setCategoryFilter(key)}
-            className={`px-3 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${
-              categoryFilter === key
+            className={`px-3 py-1 rounded-full text-xs font-medium border transition-all cursor-pointer ${categoryFilter === key
                 ? 'bg-emerald-600 border-emerald-600 text-white'
                 : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600 hover:text-zinc-300'
-            }`}
+              }`}
           >
             {label}
           </button>
@@ -178,7 +211,207 @@ export function DefinitionsPage() {
           ))}
         </div>
       )}
+
+      {suggestOpen && user && (
+        <SuggestDefinitionModal
+          createdBy={user.uid}
+          createdByDisplayName={user.displayName ?? undefined}
+          onClose={() => setSuggestOpen(false)}
+        />
+      )}
     </div>
+  )
+}
+
+const SUGGEST_CATEGORIES: { key: DefinitionCategory; label: string }[] = [
+  { key: 'political', label: 'Political' },
+  { key: 'economic', label: 'Economic' },
+  { key: 'legal', label: 'Legal' },
+  { key: 'social', label: 'Social' },
+  { key: 'other', label: 'Other' },
+]
+
+function SuggestDefinitionModal({
+  createdBy,
+  createdByDisplayName,
+  onClose,
+}: {
+  createdBy: string
+  createdByDisplayName?: string
+  onClose: () => void
+}) {
+  const { categories: defCategories } = useCategories('definition_category')
+  const approvedDefLabels = defCategories.filter(c => (c.status ?? 'approved') === 'approved').map(c => c.label)
+  const [term, setTerm] = useState('')
+  const [category, setCategory] = useState<DefinitionCategory>('political')
+  const [categoryOther, setCategoryOther] = useState('')
+  const [defText, setDefText] = useState('')
+  const [extendedNote, setExtendedNote] = useState('')
+  const [example, setExample] = useState('')
+  const [relatedInput, setRelatedInput] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [submitted, setSubmitted] = useState(false)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (!term.trim() || !defText.trim()) return
+    setSaving(true)
+    setError('')
+    const relatedTerms = relatedInput.split(',').map(t => t.trim()).filter(Boolean)
+    try {
+      await suggestDefinition({
+        term,
+        definition: defText,
+        extendedNote: extendedNote || undefined,
+        example: example || undefined,
+        category,
+        categoryOther: category === 'other' ? (categoryOther.trim() || undefined) : undefined,
+        relatedTerms,
+        createdBy,
+        createdByDisplayName,
+      })
+      setSubmitted(true)
+    } catch (err: any) {
+      setError(err.message ?? 'Failed to submit')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (submitted) {
+    return (
+      <Modal open onClose={onClose} title="Suggestion Submitted">
+        <div className="space-y-4">
+          <p className="text-zinc-300 text-sm leading-relaxed">
+            Thanks! Your definition has been submitted and will appear once a moderator reviews and approves it.
+          </p>
+          <div className="flex justify-end">
+            <Button onClick={onClose}>Done</Button>
+          </div>
+        </div>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Suggest a Definition">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <p className="text-zinc-500 text-xs">
+          Submissions are reviewed by moderators before they go live.
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="col-span-2 sm:col-span-1">
+            <label className="block text-xs text-zinc-400 mb-1">Term *</label>
+            <input
+              value={term}
+              onChange={e => setTerm(e.target.value)}
+              placeholder="e.g. Keynesian Economics"
+              required
+              className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors"
+            />
+          </div>
+          <div className="col-span-2 sm:col-span-1">
+            <label className="block text-xs text-zinc-400 mb-1">Category *</label>
+            <select
+              value={category === 'other' && categoryOther && approvedDefLabels.some(l => l.toLowerCase() === categoryOther.trim().toLowerCase())
+                ? approvedDefLabels.find(l => l.toLowerCase() === categoryOther.trim().toLowerCase())
+                : category}
+              onChange={e => {
+                const value = e.target.value
+                if (SUGGEST_CATEGORIES.some(c => c.key !== 'other' && c.key === value)) {
+                  setCategory(value as DefinitionCategory)
+                  setCategoryOther('')
+                } else if (value === 'other') {
+                  setCategory('other')
+                } else {
+                  setCategory('other')
+                  setCategoryOther(value)
+                }
+              }}
+              className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 focus:outline-none transition-colors cursor-pointer"
+            >
+              {SUGGEST_CATEGORIES.filter(c => c.key !== 'other').map(c => (
+                <option key={c.key} value={c.key}>{c.label}</option>
+              ))}
+              {approvedDefLabels.map(label => <option key={label} value={label}>{label}</option>)}
+              <option value="other">Other</option>
+            </select>
+          </div>
+          {category === 'other' && !approvedDefLabels.some(l => l.toLowerCase() === categoryOther.trim().toLowerCase()) && (
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs text-zinc-400 mb-1">Specify category *</label>
+              <input
+                required
+                value={categoryOther}
+                onChange={e => setCategoryOther(e.target.value)}
+                placeholder="e.g. Historical, Technical..."
+                maxLength={50}
+                className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors"
+              />
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-xs text-zinc-400 mb-1">Definition *</label>
+          <textarea
+            value={defText}
+            onChange={e => setDefText(e.target.value)}
+            placeholder="Clear, accurate definition…"
+            required
+            rows={4}
+            className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-zinc-400 mb-1">
+            Extended note <span className="text-zinc-600">(optional)</span>
+          </label>
+          <textarea
+            value={extendedNote}
+            onChange={e => setExtendedNote(e.target.value)}
+            placeholder="Additional context, caveats, or nuance…"
+            rows={3}
+            className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors resize-none"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-zinc-400 mb-1">
+            Example usage <span className="text-zinc-600">(optional)</span>
+          </label>
+          <input
+            value={example}
+            onChange={e => setExample(e.target.value)}
+            placeholder={`e.g. "The government adopted a Keynesian approach…"`}
+            className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-zinc-400 mb-1">
+            Related terms <span className="text-zinc-600">(optional, comma-separated)</span>
+          </label>
+          <input
+            value={relatedInput}
+            onChange={e => setRelatedInput(e.target.value)}
+            placeholder="e.g. Fiscal Policy, Monetary Policy"
+            className="w-full bg-zinc-800 border border-zinc-700 focus:border-emerald-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none transition-colors"
+          />
+        </div>
+
+        {error && <p className="text-red-400 text-xs">{error}</p>}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
+          <Button type="submit" disabled={saving || !term.trim() || !defText.trim()}>
+            {saving ? 'Submitting…' : 'Submit for Review'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
   )
 }
 
@@ -275,11 +508,10 @@ function StarRating({
             title={onRate ? `Rate accuracy ${star} out of 5` : undefined}
           >
             <svg
-              className={`w-4 h-4 transition-colors ${
-                activeRating !== null && star <= activeRating
+              className={`w-4 h-4 transition-colors ${activeRating !== null && star <= activeRating
                   ? 'text-amber-400'
                   : 'text-zinc-700'
-              }`}
+                }`}
               fill="currentColor" viewBox="0 0 20 20"
             >
               <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />

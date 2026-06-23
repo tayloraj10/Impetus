@@ -61,6 +61,45 @@ export async function createDefinition(input: CreateDefinitionInput) {
   })
 }
 
+export async function suggestDefinition(input: CreateDefinitionInput) {
+  return addDoc(collection(db, 'definitions'), {
+    term: input.term.trim(),
+    definition: input.definition.trim(),
+    extendedNote: input.extendedNote?.trim() || null,
+    example: input.example?.trim() || null,
+    category: input.category,
+    categoryOther: input.category === 'other' ? (input.categoryOther?.trim() || null) : null,
+    relatedTerms: input.relatedTerms ?? [],
+    createdBy: input.createdBy,
+    createdByDisplayName: input.createdByDisplayName ?? null,
+    status: 'pending_approval',
+    ratingSum: 0,
+    ratingCount: 0,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  })
+}
+
+export function subscribePendingDefinitions(callback: (defs: Definition[]) => void): Unsubscribe {
+  const q = query(collection(db, 'definitions'), where('status', '==', 'pending_approval'))
+  return onSnapshot(q, (snap) => {
+    const defs = snap.docs.map(d => toDefinition(d.id, d.data()))
+    defs.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    callback(defs)
+  }, (err) => {
+    console.error('subscribePendingDefinitions error:', err)
+    callback([])
+  })
+}
+
+export async function setDefinitionModerationStatus(id: string, status: 'live' | 'rejected', reason?: string) {
+  await updateDoc(doc(db, 'definitions', id), {
+    status,
+    ...(reason !== undefined ? { moderationReason: reason } : {}),
+    updatedAt: serverTimestamp(),
+  })
+}
+
 export async function updateDefinition(
   id: string,
   data: Partial<Pick<Definition, 'term' | 'definition' | 'extendedNote' | 'example' | 'category' | 'categoryOther' | 'relatedTerms' | 'status'>>,

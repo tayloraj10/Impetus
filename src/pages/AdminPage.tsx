@@ -8,6 +8,7 @@ import { useCategories } from '../hooks/useGroupCategories'
 import { addCategory, deleteCategory, seedDefaultCategories, rejectCategorySuggestion, isApproved, isRejected } from '../services/categoriesService'
 import {
   subscribeAllDefinitions, createDefinition, updateDefinition,
+  subscribePendingDefinitions, setDefinitionModerationStatus,
 } from '../services/definitionsService'
 import {
   subscribePendingGroups, setGroupModerationStatus,
@@ -810,7 +811,7 @@ function EditTopicModal({ topic, onClose, topics }: { topic: Topic; onClose: () 
 
 // ── Moderation Queue ──────────────────────────────────────────────────────────
 
-type ModTab = 'groups' | 'resources' | 'events' | 'map_pins'
+type ModTab = 'groups' | 'resources' | 'events' | 'map_pins' | 'definitions'
 
 function ModerationSection({ topicMap }: { topicMap: Record<string, string> }) {
   const [tab, setTab] = useState<ModTab>('groups')
@@ -818,20 +819,23 @@ function ModerationSection({ topicMap }: { topicMap: Record<string, string> }) {
   const [resources, setResources] = useState<Resource[]>([])
   const [events, setEvents] = useState<ImpetusEvent[]>([])
   const [mapPins, setMapPins] = useState<MapPin[]>([])
+  const [definitions, setDefinitions] = useState<Definition[]>([])
 
   useEffect(() => subscribePendingGroups(setGroups), [])
   useEffect(() => subscribePendingResources(setResources), [])
   useEffect(() => subscribePendingEvents(setEvents), [])
   useEffect(() => subscribePendingMapPins(setMapPins), [])
+  useEffect(() => subscribePendingDefinitions(setDefinitions), [])
 
-  const counts: Record<ModTab, number> = { groups: groups.length, resources: resources.length, events: events.length, map_pins: mapPins.length }
-  const total = groups.length + resources.length + events.length + mapPins.length
+  const counts: Record<ModTab, number> = { groups: groups.length, resources: resources.length, events: events.length, map_pins: mapPins.length, definitions: definitions.length }
+  const total = groups.length + resources.length + events.length + mapPins.length + definitions.length
 
   const tabs: { key: ModTab; label: string }[] = [
     { key: 'groups', label: 'Groups' },
     { key: 'resources', label: 'Resources' },
     { key: 'events', label: 'Events' },
     { key: 'map_pins', label: 'Map Pins' },
+    { key: 'definitions', label: 'Definitions' },
   ]
 
   return (
@@ -887,6 +891,11 @@ function ModerationSection({ topicMap }: { topicMap: Record<string, string> }) {
               mapPins.length === 0
                 ? <p className="text-zinc-600 text-sm py-4 text-center">No pending map pins</p>
                 : mapPins.map(p => <MapPinModerationCard key={p.id} pin={p} topicName={topicMap[p.topicId]} />)
+            )}
+            {tab === 'definitions' && (
+              definitions.length === 0
+                ? <p className="text-zinc-600 text-sm py-4 text-center">No pending definitions</p>
+                : definitions.map(d => <DefinitionModerationCard key={d.id} definition={d} />)
             )}
           </div>
         </>
@@ -1467,6 +1476,93 @@ function MapPinDetailModal({ pin: p, topicName, open, onClose }: { pin: MapPin; 
   )
 }
 
+function DefinitionModerationCard({ definition: d }: { definition: Definition }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <div
+        onClick={() => setOpen(true)}
+        className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 flex items-center gap-3 hover:border-zinc-700 transition-colors cursor-pointer"
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+            <span className="text-xs bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded font-medium">Definition</span>
+            <span className={`text-xs font-medium capitalize ${DEF_CATEGORY_COLORS[d.category]}`}>
+              {d.category === 'other' && d.categoryOther ? d.categoryOther : d.category}
+            </span>
+          </div>
+          <p className="text-zinc-100 text-sm font-medium truncate">{d.term}</p>
+          <p className="text-zinc-600 text-xs mt-0.5">by {d.createdByDisplayName ?? 'Unknown'} · {formatTimeAgo(d.createdAt)}</p>
+        </div>
+        <span className="text-zinc-500 text-xs shrink-0">Review →</span>
+      </div>
+      <DefinitionDetailModal definition={d} open={open} onClose={() => setOpen(false)} />
+    </>
+  )
+}
+
+function DefinitionDetailModal({ definition: d, open, onClose }: { definition: Definition; open: boolean; onClose: () => void }) {
+  const [acting, setActing] = useState<'approve' | 'reject' | null>(null)
+
+  async function act(action: 'approve' | 'reject', reason?: string) {
+    setActing(action)
+    try {
+      await setDefinitionModerationStatus(d.id, action === 'approve' ? 'live' : 'rejected', reason)
+      onClose()
+    } finally {
+      setActing(null)
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Review Definition" size="lg">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-zinc-500 text-xs mb-1">Term</p>
+            <p className="text-zinc-100 font-semibold">{d.term}</p>
+          </div>
+          <div>
+            <p className="text-zinc-500 text-xs mb-1">Category</p>
+            <span className={`text-xs px-2 py-0.5 rounded capitalize bg-zinc-800 ${DEF_CATEGORY_COLORS[d.category]}`}>
+              {d.category === 'other' && d.categoryOther ? d.categoryOther : d.category}
+            </span>
+          </div>
+        </div>
+        <div>
+          <p className="text-zinc-500 text-xs mb-1">Definition</p>
+          <p className="text-zinc-300 text-sm leading-relaxed">{d.definition}</p>
+        </div>
+        {d.extendedNote && (
+          <div>
+            <p className="text-zinc-500 text-xs mb-1">Extended note</p>
+            <p className="text-zinc-300 text-sm leading-relaxed">{d.extendedNote}</p>
+          </div>
+        )}
+        {d.example && (
+          <div>
+            <p className="text-zinc-500 text-xs mb-1">Example usage</p>
+            <p className="text-zinc-300 text-sm italic">"{d.example}"</p>
+          </div>
+        )}
+        {d.relatedTerms.length > 0 && (
+          <div>
+            <p className="text-zinc-500 text-xs mb-1">Related terms</p>
+            <p className="text-zinc-300 text-sm">{d.relatedTerms.join(', ')}</p>
+          </div>
+        )}
+        <p className="text-zinc-600 text-xs pt-3 border-t border-zinc-800">
+          Submitted by {d.createdByDisplayName ?? 'Unknown'} · {formatTimeAgo(d.createdAt)}
+        </p>
+        {d.category === 'other' && d.categoryOther && (
+          <CategorySuggestionCallout label={d.categoryOther} kind="definition_category" />
+        )}
+        <ReviewActions acting={acting} onApprove={() => act('approve')} onReject={(reason) => act('reject', reason)} />
+      </div>
+    </Modal>
+  )
+}
+
 // ── Removed Content ───────────────────────────────────────────────────────────
 
 type RemovedTab = 'groups' | 'resources' | 'events' | 'challenges' | 'map_pins'
@@ -1723,17 +1819,21 @@ function DefinitionsManager() {
   const [definitions, setDefinitions] = useState<Definition[]>([])
   const [createOpen, setCreateOpen] = useState(false)
   const [editDef, setEditDef] = useState<Definition | null>(null)
+  const [search, setSearch] = useState('')
 
   useEffect(() => subscribeAllDefinitions(setDefinitions), [])
 
-  const live = definitions.filter(d => d.status === 'live')
-  const archived = definitions.filter(d => d.status === 'archived')
+  const q = search.trim().toLowerCase()
+  const matches = (d: Definition) => !q || d.term.toLowerCase().includes(q) || d.definition.toLowerCase().includes(q)
+
+  const live = definitions.filter(d => d.status === 'live' && matches(d))
+  const archived = definitions.filter(d => d.status === 'archived' && matches(d))
 
   return (
     <section className="mb-8">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h2 className="text-sm font-medium text-zinc-400 uppercase tracking-wider">
-          Definitions ({live.length})
+          Definitions ({definitions.filter(d => d.status === 'live').length})
         </h2>
         <button
           onClick={() => setCreateOpen(true)}
@@ -1743,8 +1843,26 @@ function DefinitionsManager() {
         </button>
       </div>
 
+      <div className="relative mb-4">
+        <svg
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-zinc-500 pointer-events-none"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z" />
+        </svg>
+        <input
+          type="search"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search definitions…"
+          className="w-full bg-zinc-900 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500 rounded-lg pl-8 pr-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none transition-colors"
+        />
+      </div>
+
       {definitions.length === 0 ? (
         <p className="text-zinc-600 text-sm">No definitions yet.</p>
+      ) : live.length === 0 && archived.length === 0 ? (
+        <p className="text-zinc-600 text-sm">No definitions match your search.</p>
       ) : (
         <div className="space-y-2">
           {live.map(def => (
