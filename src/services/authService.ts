@@ -1,6 +1,8 @@
 import {
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword as firebaseSignInWithEmail,
   createUserWithEmailAndPassword as firebaseCreateUser,
   updateProfile,
@@ -20,8 +22,23 @@ export type { RecaptchaVerifier, ConfirmationResult }
 
 const googleProvider = new GoogleAuthProvider()
 
+// Popups are unreliable on mobile browsers (storage partitioning, in-app
+// webviews, popup blocking) and can fail to deliver a result with no error.
+// Redirect navigates away and back instead, which works consistently there.
+function isMobileDevice(): boolean {
+  return /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent)
+}
+
 export async function signInWithGoogle(): Promise<void> {
-  await signInWithPopup(auth, googleProvider)
+  if (isMobileDevice()) {
+    await signInWithRedirect(auth, googleProvider)
+  } else {
+    await signInWithPopup(auth, googleProvider)
+  }
+}
+
+export async function getGoogleRedirectResult() {
+  return getRedirectResult(auth)
 }
 
 export async function signInWithEmail(email: string, password: string): Promise<void> {

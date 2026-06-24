@@ -60,7 +60,7 @@ export function SignInModal({ open, onClose }: Props) {
   const [linkSent, setLinkSent] = useState(false)
   const [confirmEmail, setConfirmEmail] = useState('')
 
-  const { user, emailLinkPending, completeEmailLink } = useAuth()
+  const { user, emailLinkPending, completeEmailLink, googleRedirectError } = useAuth()
 
   // When modal opens and there's a pending email link, jump straight to confirm step
   useEffect(() => {
@@ -68,6 +68,13 @@ export function SignInModal({ open, onClose }: Props) {
       setStep('email-link-confirm')
     }
   }, [open, emailLinkPending])
+
+  // Surface errors from a mobile Google redirect sign-in that failed
+  useEffect(() => {
+    if (open && googleRedirectError) {
+      setError(googleRedirectError)
+    }
+  }, [open, googleRedirectError])
 
   // Close as soon as auth succeeds — don't wait for signInWithPopup to fully settle
   useEffect(() => {

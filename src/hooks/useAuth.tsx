@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { User } from 'firebase/auth'
-import { onAuthChange, getUserRole, ensureUserProfile, isEmailSignInLink, completeEmailSignIn } from '../services/authService'
+import { onAuthChange, getUserRole, ensureUserProfile, isEmailSignInLink, completeEmailSignIn, getGoogleRedirectResult } from '../services/authService'
 
 interface AuthContextValue {
   user: User | null
@@ -8,11 +8,13 @@ interface AuthContextValue {
   loading: boolean
   emailLinkPending: boolean
   completeEmailLink: (email: string) => Promise<void>
+  googleRedirectError: string | null
 }
 
 const AuthContext = createContext<AuthContextValue>({
   user: null, role: 'user', loading: true,
   emailLinkPending: false, completeEmailLink: async () => {},
+  googleRedirectError: null,
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -20,7 +22,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<'user' | 'moderator' | 'admin'>('user')
   const [loading, setLoading] = useState(true)
   const [emailLinkPending, setEmailLinkPending] = useState(false)
+  const [googleRedirectError, setGoogleRedirectError] = useState<string | null>(null)
   const emailLinkUrlRef = useRef<string | null>(null)
+
+  // Pick up the result of a mobile signInWithRedirect after the app reloads.
+  useEffect(() => {
+    getGoogleRedirectResult().catch((e: any) => {
+      if (e?.code === 'auth/no-current-user' || e?.code === 'auth/popup-closed-by-user') return
+      setGoogleRedirectError(e?.message ?? 'Google sign-in failed')
+    })
+  }, [])
 
   useEffect(() => {
     return onAuthChange((u) => {
@@ -62,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, emailLinkPending, completeEmailLink }}>
+    <AuthContext.Provider value={{ user, role, loading, emailLinkPending, completeEmailLink, googleRedirectError }}>
       {children}
     </AuthContext.Provider>
   )
