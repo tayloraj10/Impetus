@@ -5,7 +5,7 @@ import { getStorage } from 'firebase/storage'
 
 const firebaseConfig = {
   apiKey: "AIzaSyA4JQDW8jPCFVyJxo8z1RXMC9Ctjrt5RZk",
-  authDomain: "impetus-a9558.firebaseapp.com",
+  authDomain: "impetus-a9558.web.app",
   projectId: "impetus-a9558",
   storageBucket: "impetus-a9558.firebasestorage.app",
   messagingSenderId: "473638522628",
